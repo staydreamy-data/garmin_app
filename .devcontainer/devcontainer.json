@@ -1,0 +1,24 @@
+{
+  "name": "dehetapp",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "remoteUser": "vscode",
+  "postCreateCommand": "uv sync",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-toolsai.jupyter"
+      ]
+    }
+  },
+  "portsAttributes": {
+    "8080": {
+      "label": "Airflow Web UI"
+    }
+  }
+}
