@@ -1,4 +1,4 @@
-"""Minimal Garmin ingest DAG that prints the templated run date."""
+"""Minimal Garmin ingest DAG that prints the templated run date. Test"""
 from airflow.sdk import dag, task
 from pendulum import datetime
 from include.pipelines.ingest import ingest_garmin_activities_by_date
