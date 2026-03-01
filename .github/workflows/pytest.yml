@@ -15,6 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      AIRFLOW_HOME: ${{ github.workspace }}/astro
+      AIRFLOW__CORE__DAGS_FOLDER: ${{ github.workspace }}/astro/dags
+      PYTHONPATH: ${{ github.workspace }}/astro
     steps:
       - name: Checkout
         uses: actions/checkout@v4
