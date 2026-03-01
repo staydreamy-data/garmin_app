@@ -2,7 +2,11 @@
 from airflow.sdk import dag, task
 from pendulum import datetime
 from include.pipelines.ingest import ingest_garmin_activities_by_date
+from include.helpers.config import load_config
 
+
+
+PIPELINE_NAME = "garmin_ingest"
 STORAGE_LOCATION = "include/data/raw/garmin"
 ACTIVITIES_FOLDER = "activities"
 
@@ -17,7 +21,10 @@ ACTIVITIES_FOLDER = "activities"
 def garmin_ingest():
     @task
     def ingest_activities(run_date: str):
-        ingest_garmin_activities_by_date(run_date, STORAGE_LOCATION, ACTIVITIES_FOLDER)
+
+        config = load_config("garmin_ingest")
+        garmin_methods = config.get("method_tasks", [])
+        ingest_garmin_activities_by_date(run_date, STORAGE_LOCATION, ACTIVITIES_FOLDER, garmin_methods)
 
     ingest_activities("{{ ds }}")
 

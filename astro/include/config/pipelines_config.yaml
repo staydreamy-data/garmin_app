@@ -1,0 +1,13 @@
+pipelines:
+  garmin_ingest:
+    storage_root: include/data/raw/garmin
+    activities_folder: activities
+    method_tasks:
+      - key: heartrate
+        enabled: true
+        output_folder: heartrate
+        overwrite: true
+      - key: splits
+        enabled: true
+        output_folder: splits
+        overwrite: true
