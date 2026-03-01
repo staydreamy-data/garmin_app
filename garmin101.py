@@ -1,4 +1,3 @@
-import logging
 
 from garminconnect import Garmin
 from datetime import timedelta

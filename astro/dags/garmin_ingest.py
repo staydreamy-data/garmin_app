@@ -24,7 +24,7 @@ def garmin_ingest():
         garmin_methods = config.get("method_tasks", [])
         storage_root = config.get("storage_root")
         activities_folder = config.get("activities_folder")
-        ingest_garmin_activities_by_date(run_date, STORAGE_LOCATION, ACTIVITIES_FOLDER, garmin_methods)
+        ingest_garmin_activities_by_date(run_date, storage_root, activities_folder, garmin_methods)
 
     ingest_activities("{{ ds }}")
 
