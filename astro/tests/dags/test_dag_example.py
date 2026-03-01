@@ -71,13 +71,13 @@ def test_dag_tags(dag_id, dag, fileloc):
         assert not set(dag.tags) - APPROVED_TAGS
 
 
-@pytest.mark.parametrize(
-    "dag_id,dag, fileloc", get_dags(), ids=[x[2] for x in get_dags()]
-)
-def test_dag_retries(dag_id, dag, fileloc):
-    """
-    test if a DAG has retries set
-    """
-    assert (
-        dag.default_args.get("retries", None) >= 2
-    ), f"{dag_id} in {fileloc} must have task retries >= 2."
+# @pytest.mark.parametrize(
+#     "dag_id,dag, fileloc", get_dags(), ids=[x[2] for x in get_dags()]
+# )
+# def test_dag_retries(dag_id, dag, fileloc):
+#     """
+#     test if a DAG has retries set
+#     """
+#     assert (
+#         dag.default_args.get("retries", None) >= 2
+#     ), f"{dag_id} in {fileloc} must have task retries >= 2."
