@@ -7,8 +7,6 @@ from include.helpers.config import load_config
 
 
 PIPELINE_NAME = "garmin_ingest"
-STORAGE_LOCATION = "include/data/raw/garmin"
-ACTIVITIES_FOLDER = "activities"
 
 @dag(
     start_date=datetime(2026, 1, 1),
@@ -24,6 +22,8 @@ def garmin_ingest():
 
         config = load_config("garmin_ingest")
         garmin_methods = config.get("method_tasks", [])
+        storage_root = config.get("storage_root")
+        activities_folder = config.get("activities_folder")
         ingest_garmin_activities_by_date(run_date, STORAGE_LOCATION, ACTIVITIES_FOLDER, garmin_methods)
 
     ingest_activities("{{ ds }}")

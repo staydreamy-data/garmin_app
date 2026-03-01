@@ -17,7 +17,6 @@ def ingest_garmin_activities_by_date(activity_date: str, storage_location: str, 
     try:
         conn = BaseHook.get_connection("garmin_default")
         username = conn.login
-        logging.info(f"Retrieved Garmin Connect credentials for user: {username}")
         password = conn.password
 
         client = Garmin(
@@ -51,14 +50,6 @@ def ingest_garmin_activities_by_date(activity_date: str, storage_location: str, 
                 logging.info(f"Skipping {method_task['key']} for activity {activity_id} as it is disabled in the config.")
                 continue
 
-            method_key = method_task["key"]
-            output_folder = method_task["output_folder"]
-            overwrite = method_task["overwrite"]
-            method_name = METHOD_REGISTRY.get(method_key)
-
-            method = getattr(client, method_name, None)
-            result = method(activity_id)
-
             output_path = f"{storage_location}/{output_folder}/dt={activity_date}"
             Path(output_path).mkdir(parents=True, exist_ok=True)
             output_file = f"{output_path}/{method_key}_{activity_id}.json"
@@ -66,6 +57,17 @@ def ingest_garmin_activities_by_date(activity_date: str, storage_location: str, 
             if not overwrite and Path(output_file).exists():
                 logging.info(f"Skipping {method_key} for activity {activity_id} as output already exists and overwrite is False.")
                 continue
+
+            method_key = method_task["key"]
+            output_folder = method_task["output_folder"]
+            overwrite = method_task["overwrite"]
+            method_name = METHOD_REGISTRY.get(method_key)
+            if not method_name:
+                logging.warning(f"No Garmin method found for key: {method_key}. Skipping.")
+                continue
+
+            method = getattr(client, method_name, None)
+            result = method(activity_id)
 
             with open(output_file, "w") as f:
                 json.dump(result, f, indent=4)
