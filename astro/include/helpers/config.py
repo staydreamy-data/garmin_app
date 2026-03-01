@@ -3,6 +3,7 @@ import logging
 from include.constants import CONFIG_PATH
 from pathlib import Path
 
+
 def load_config(pipeline_name: str) -> dict:
     logging.info(f"Reading configuration for pipeline: {pipeline_name}")
 
