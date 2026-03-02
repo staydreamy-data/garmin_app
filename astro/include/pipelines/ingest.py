@@ -10,21 +10,53 @@ METHOD_REGISTRY: dict[str, str] = {
     "splits": "get_activity_splits",
 }
 
+def get_garmin_client(conn_id):
+    """
+    Build and authenticate a Garmin client from an Airflow connection.
 
-def ingest_garmin_activities_by_date(
-    activity_date: str, storage_root: str, activities_folder: str, method_tasks: list
-):
+    Args:
+        conn_id: Airflow connection id that contains Garmin login/password.
 
+    Returns:
+        An authenticated ``garminconnect.Garmin`` client.
+
+    Raises:
+        RuntimeError: If the Airflow connection is missing/invalid or login fails.
+    """
     try:
-        conn = BaseHook.get_connection("garmin_default")
+        conn = BaseHook.get_connection(conn_id)
         username = conn.login
         password = conn.password
 
         client = Garmin(username, password)
-
         client.login()
+        return client
     except Exception as e:
-        raise Exception(f"Failed to login to Garmin Connect: {e}")
+        raise RuntimeError("Failed to login to Garmin Connect") from e
+
+
+def ingest_garmin_activities_by_date(
+    conn_id, activity_date: str, storage_root: str, activities_folder: str, assets: list
+):
+    """
+    Ingest Garmin activities for a date and collect configured per-activity assets.
+
+    Flow:
+        1. Login once using ``conn_id``.
+        2. Download all activities for ``activity_date``.
+        3. Save raw activities under ``{storage_root}/{activities_folder}/dt=<date>``.
+        4. For each activity, run enabled asset methods from ``assets`` and persist JSON output.
+
+    Args:
+        conn_id: Airflow connection id containing Garmin credentials.
+        activity_date: Logical date (usually Airflow ``{{ ds }}``) used for backfill partitioning.
+        storage_root: Base directory for output files.
+        activities_folder: Folder name for raw activities payloads.
+        assets: List of asset configs. Expected keys per asset:
+            ``key``, ``enabled``, ``output_folder``, ``overwrite``.
+    """
+
+    client = get_garmin_client(conn_id)
 
     full_location_path = f"{storage_root}/{activities_folder}/dt={activity_date}"
     ingestion_time = datetime.now().isoformat()
@@ -43,17 +75,17 @@ def ingest_garmin_activities_by_date(
 
     for activity in activities:
         activity_id = activity.get("activityId")
-        for method_task in method_tasks:
-            enabled = method_task.get("enabled")
+        for asset in assets:
+            enabled = asset.get("enabled")
             if not enabled:
                 logging.info(
-                    f"Skipping {method_task['key']} for activity {activity_id} as it is disabled in the config."
+                    f"Skipping {asset['key']} for activity {activity_id} as it is disabled in the config."
                 )
                 continue
 
-            method_key = method_task["key"]
-            output_folder = method_task["output_folder"]
-            overwrite = method_task["overwrite"]
+            method_key = asset["key"]
+            output_folder = asset["output_folder"]
+            overwrite = asset["overwrite"]
             output_path = f"{storage_root}/{output_folder}/dt={activity_date}"
             Path(output_path).mkdir(parents=True, exist_ok=True)
             output_file = f"{output_path}/{method_key}_{activity_id}.json"

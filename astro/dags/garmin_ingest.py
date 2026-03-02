@@ -22,11 +22,11 @@ def garmin_ingest():
     def ingest_activities(run_date: str):
 
         config = load_config("garmin_ingest")
-        garmin_methods = config.get("method_tasks", [])
+        garmin_assets = config.get("assets", [])
         storage_root = config.get("storage_root")
         activities_folder = config.get("activities_folder")
         ingest_garmin_activities_by_date(
-            run_date, storage_root, activities_folder, garmin_methods
+            run_date, storage_root, activities_folder, assets
         )
 
     ingest_activities("{{ ds }}")

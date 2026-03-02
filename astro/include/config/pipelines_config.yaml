@@ -2,7 +2,7 @@ pipelines:
   garmin_ingest:
     storage_root: include/data/raw/garmin
     activities_folder: activities
-    method_tasks:
+    assets:
       - key: heartrate
         enabled: true
         output_folder: heartrate
