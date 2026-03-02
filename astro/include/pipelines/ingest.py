@@ -10,6 +10,7 @@ METHOD_REGISTRY: dict[str, str] = {
     "splits": "get_activity_splits",
 }
 
+
 def get_garmin_client(conn_id):
     """
     Build and authenticate a Garmin client from an Airflow connection.
