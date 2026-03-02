@@ -43,12 +43,14 @@ def test_get_garmin_client_wraps_login_errors(monkeypatch):
 def _build_mock_client(activities):
     client = MagicMock()
     client.get_activities_by_date.return_value = activities
-    client.get_activity_hr_in_timezones.side_effect = (
-        lambda activity_id: {"type": "heartrate", "activity_id": activity_id}
-    )
-    client.get_activity_splits.side_effect = (
-        lambda activity_id: {"type": "splits", "activity_id": activity_id}
-    )
+    client.get_activity_hr_in_timezones.side_effect = lambda activity_id: {
+        "type": "heartrate",
+        "activity_id": activity_id,
+    }
+    client.get_activity_splits.side_effect = lambda activity_id: {
+        "type": "splits",
+        "activity_id": activity_id,
+    }
     return client
 
 
@@ -122,7 +124,9 @@ def test_ingest_skips_disabled_assets(monkeypatch, tmp_path):
         activity_date="2026-03-01",
         storage_root=str(tmp_path),
         activities_folder="activities",
-        assets=_build_assets(heartrate_enabled=True, splits_enabled=False, overwrite=True),
+        assets=_build_assets(
+            heartrate_enabled=True, splits_enabled=False, overwrite=True
+        ),
     )
 
     client.get_activity_hr_in_timezones.assert_called_once_with(1001)

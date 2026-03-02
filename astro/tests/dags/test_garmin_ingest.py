@@ -30,7 +30,14 @@ def test_garmin_ingest_task_calls_config_and_pipeline(monkeypatch):
     task = dag.get_task("ingest_activities")
 
     fake_config = {
-        "assets": [{"key": "heartrate", "enabled": True, "output_folder": "heartrate", "overwrite": True}],
+        "assets": [
+            {
+                "key": "heartrate",
+                "enabled": True,
+                "output_folder": "heartrate",
+                "overwrite": True,
+            }
+        ],
         "storage_root": "include/data/raw/garmin",
         "activities_folder": "activities",
     }
