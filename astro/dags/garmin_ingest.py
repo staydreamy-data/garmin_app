@@ -1,4 +1,26 @@
-"""Minimal Garmin ingest DAG that prints the templated run date. Test"""
+"""
+# Garmin Ingest DAG
+
+Daily Garmin ingestion pipeline with backfill support.
+
+## Behavior
+- Schedule: `@daily`
+- Catchup: enabled (`catchup=True`) so historical runs/backfills are supported.
+- Logical date: Airflow `{{ ds }}` is passed to the pipeline as the activity date.
+
+## Configuration
+Pipeline settings are loaded from `include/config/pipelines_config.yaml`
+using pipeline key `garmin_ingest`.
+
+Expected config fields:
+- `storage_root`: base output directory.
+- `activities_folder`: folder for raw activities payloads.
+- `assets`: per-activity extraction config (for example `heartrate`, `splits`).
+
+## Output
+Raw activities and configured asset payloads are written as JSON files
+partitioned by date (`dt=<YYYY-MM-DD>`).
+"""
 
 from airflow.sdk import dag, task
 from pendulum import datetime
@@ -20,6 +42,7 @@ PIPELINE_NAME = "garmin_ingest"
 def garmin_ingest():
     @task
     def ingest_activities(run_date: str):
+        """Load config and ingest Garmin activities plus configured assets for one logical date."""
 
         config = load_config("garmin_ingest")
         assets = config.get("assets", [])
