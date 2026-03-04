@@ -29,7 +29,7 @@ from include.helpers.config import load_config
 
 
 PIPELINE_NAME = "garmin_ingest"
-
+GARMIN_CONNECTION_ID = "garmin_default"
 
 @dag(
     start_date=datetime(2026, 1, 1),
@@ -49,7 +49,7 @@ def garmin_ingest():
         storage_root = config.get("storage_root")
         activities_folder = config.get("activities_folder")
         ingest_garmin_activities_by_date(
-            run_date, storage_root, activities_folder, assets
+            GARMIN_CONNECTION_ID, run_date, storage_root, activities_folder, assets
         )
 
     ingest_activities("{{ ds }}")
