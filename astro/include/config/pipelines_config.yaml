@@ -10,6 +10,10 @@ pipelines:
       - key: splits
         enabled: true
         output_folder: splits
+        overwrite: true      
+      - key: hrv_data
+        enabled: true
+        output_folder: hrv_data
         overwrite: true
   raw_to_bronze:
     source_path: include/data/raw/garmin
@@ -75,6 +79,52 @@ pipelines:
           - target: has_splits
             source: hasSplits
             dtype: boolean
+            required: false
+      splits:
+        enabled: true
+        source_type: list_of_json
+        source_folder: splits
+        target: 
+          target_folder: splits
+          target_table: splits
+          primary_key: [activity_id, message_index]
+          event_timestamp_column: updated_at
+        column_mapping:
+          - target: activity_id
+            source: activityId
+            dtype: int64
+            required: true
+          - target: start_time_gmt
+            source: startTimeGMT
+            dtype: string
+            required: true
+          - target: intensity_type
+            source: intensityType
+            dtype: string
+            required: true
+          - target: distance
+            source: distance
+            dtype: float64
+            required: true
+          - target: duration
+            source: duration
+            dtype: float64
+            required: true
+          - target: average_speed
+            source: averageSpeed
+            dtype: float64
+            required: false
+          - target: average_hr
+            source: averageHR
+            dtype: float64
+            required: false
+          - target: max_hr
+            source: maxHR
+            dtype: float64
+            required: false
+          - target: message_index
+            source: messageIndex
+            dtype: int64
             required: false
       # - key: heartrate
       #   enabled: true

@@ -37,6 +37,8 @@ def raw_to_bronze():
     @task
     def get_config():
         config = load_config(PIPELINE_NAME)
+        import logging
+        logging.info(f"Loaded config for {PIPELINE_NAME}: {config['assets'].keys()}")
         return config
 
     @task
@@ -47,6 +49,8 @@ def raw_to_bronze():
 
     @task
     def splits_to_parquet(run_date: str, config: dict):
+
+        process_entity_to_stage(run_date, config, entity="splits")
         # TODO: Read raw splits JSON for run_date -> transform/select columns -> validate -> write staged parquet.
         pass
 
