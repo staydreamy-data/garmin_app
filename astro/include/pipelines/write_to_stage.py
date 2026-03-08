@@ -12,6 +12,8 @@ def iter_source_files(source_path: str, file_mask: str):
 
 def map_raw_to_staged(records: list, columns_mapping: dict) -> list:
 
+
+
     mapped_records = []
     for record in records:
 
@@ -22,7 +24,8 @@ def map_raw_to_staged(records: list, columns_mapping: dict) -> list:
             source_column_value = record.get(source_split[0])
             for i in range(1, len(source_split)):
                 source_column_value = source_column_value.get(source_split[i])
-            mapped_record[target_column] = source_column_value
+            if source_column_value:
+                mapped_record[target_column] = source_column_value
         mapped_records.append(mapped_record)
 
     return mapped_records
@@ -45,17 +48,31 @@ def process_entity_to_stage(run_date: str, config: dict, entity: str):
     
     files = iter_source_files(full_source_path, file_mask="*.json")
 
+
     for file_path in files:
         logging.info(f"Processing file: {file_path}")
         with open(file_path, 'r', encoding = 'utf-8') as f:
             raw_data = json.load(f)
+
             logging.info(f"Loaded {len(raw_data)} records from {file_path} file into memory")
+
+
+            records = []
             if source_type == "list_of_json":
-                mapped_df = map_raw_to_staged(raw_data, column_mapping)
-                logging.info(f"Mapped {len(mapped_df)} records from {file_path} file into staged format")
-                logging.info(f"What I mapped: {mapped_df[0]}")
+                records = raw_data
+            elif source_type == "nested_list":
+                # Assuming the nested list is under a key called "data"
+                nested_list_path = entity_config.get("nested_list_path")
+                records = raw_data.get(nested_list_path, [])
             else:
                 continue
+
+            mapped_df = map_raw_to_staged(records, column_mapping)
+
+            logging.info(f"Mapped {len(mapped_df)} records from {file_path} file into staged format")
+            logging.info(f"What I mapped: {mapped_df[0]}")
+
+            
 
         # raw_data = read_raw_json(file_path)
 

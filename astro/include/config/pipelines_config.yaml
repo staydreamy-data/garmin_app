@@ -82,8 +82,10 @@ pipelines:
             required: false
       splits:
         enabled: true
-        source_type: list_of_json
+        source_type: nested_list
         source_folder: splits
+        primary_key: activityId
+        nested_list_path: lapDTOs
         target: 
           target_folder: splits
           target_table: splits
