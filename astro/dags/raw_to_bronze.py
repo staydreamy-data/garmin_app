@@ -33,6 +33,7 @@ def raw_to_bronze():
     # 8) Use key + update_ts merge semantics so Bronze stays unique/current and idempotent.
     # 9) Add cleanup task to remove short-lived staged parquet after successful merge.
     # 10) Add tests for DAG topology, validation behavior, and merge idempotency.
+    # 11) add dictionary load get_devices() (init.py) get_device_settings(device_id) (init.py)
 
     @task
     def get_config():
@@ -55,7 +56,7 @@ def raw_to_bronze():
         pass
 
     @task
-    def heartrate_to_parquet(run_date: str, config: dict):
+    def activity_details_to_parquet(run_date: str, config: dict):
         # TODO: Read raw heartrate JSON for run_date -> transform/select columns -> validate -> write staged parquet.
         pass
 
@@ -73,11 +74,11 @@ def raw_to_bronze():
 
     activities_task = activities_to_parquet("{{ ds }}", config)
     splits_task = splits_to_parquet("{{ ds }}", config)
-    heartrate_task = heartrate_to_parquet("{{ ds }}", config)
+    activity_details_task = activity_details_to_parquet("{{ ds }}", config)
 
     merge_to_duckdb_task = merge_to_duckdb()
     cleanup_staged_parquet_task = cleanup_staged_parquet()
 
-    config >> [activities_task, splits_task, heartrate_task] >> merge_to_duckdb_task >> cleanup_staged_parquet_task
+    config >> [activities_task, splits_task, activity_details_task] >> merge_to_duckdb_task >> cleanup_staged_parquet_task
 
 raw_to_bronze()

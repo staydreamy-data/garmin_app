@@ -30,6 +30,13 @@ def map_raw_to_staged(records: list, columns_mapping: dict) -> list:
 
     return mapped_records
 
+def resolve_raw_data(raw_data: dict | list, resolve_config: dict):
+    if resolve_config["payload_kind"] == "object":
+        return raw_data[resolve_config["records_path"]]
+    elif resolve_config["payload_kind"] == "list":
+        return raw_data
+
+
 def process_entity_to_stage(run_date: str, config: dict, entity: str):
 
     source_path = config["source_path"]
@@ -37,7 +44,6 @@ def process_entity_to_stage(run_date: str, config: dict, entity: str):
     logging.info(f"{config['assets'].keys()}")
     entity_config = config["assets"][entity]
     source_folder = entity_config["source_folder"]
-    source_type = entity_config["source_type"]
     column_mapping = entity_config["column_mapping"]
     # target_folder = entity_config["target_folder"]
     # column_mapping = entity_config["column_mapping"]
@@ -45,7 +51,9 @@ def process_entity_to_stage(run_date: str, config: dict, entity: str):
     # Read raw JSON files from the source folder
     full_source_path = f"{source_path}/{source_folder}/dt={run_date}"
     logging.info(f"Reading raw JSON files from: {full_source_path}")
-    
+
+    extract_config = entity_config["extract"]    
+
     files = iter_source_files(full_source_path, file_mask="*.json")
 
 
@@ -57,15 +65,7 @@ def process_entity_to_stage(run_date: str, config: dict, entity: str):
             logging.info(f"Loaded {len(raw_data)} records from {file_path} file into memory")
 
 
-            records = []
-            if source_type == "list_of_json":
-                records = raw_data
-            elif source_type == "nested_list":
-                # Assuming the nested list is under a key called "data"
-                nested_list_path = entity_config.get("nested_list_path")
-                records = raw_data.get(nested_list_path, [])
-            else:
-                continue
+            records = resolve_raw_data(raw_data, extract_config)
 
             mapped_df = map_raw_to_staged(records, column_mapping)
 

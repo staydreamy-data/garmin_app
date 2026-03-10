@@ -6,9 +6,8 @@ import json
 from airflow.hooks.base import BaseHook
 
 METHOD_REGISTRY: dict[str, str] = {
-    "heartrate": "get_activity_hr_in_timezones",
     "splits": "get_activity_splits",
-    "hrv_data": "get_hrv_data"
+    "activity_details": "get_activity_details",
 }
 
 
@@ -71,7 +70,7 @@ def ingest_garmin_activities_by_date(
     activities = client.get_activities_by_date((activity_date))
 
     if not activities:
-        logging.logging(f"No activities found for date: {activity_date}")
+        logging.info(f"No activities found for date: {activity_date}")
         return
 
     logging.info(f"Retrieved {len(activities)} activities for date: {activity_date}")
@@ -111,7 +110,16 @@ def ingest_garmin_activities_by_date(
                 continue
 
             method = getattr(client, method_name, None)
-            result = method(activity_id)
+            if method_name == "get_heart_rates":
+                result = method(activity_date)
+            else:
+                result = method(activity_id)
+
+            if not result:
+                logging.info(
+                    f"No data returned for {method_key} of activity {activity_id}. Skipping."
+                )
+                continue
 
             with open(output_file, "w") as f:
                 json.dump(result, f, indent=4)
