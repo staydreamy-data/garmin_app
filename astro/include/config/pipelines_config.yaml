@@ -15,7 +15,7 @@ pipelines:
     source_path: include/data/raw/garmin
     destination_path: include/data/bronze/running
     staging_path: include/data/stage/raw_to_bronze
-    duckdb_path: include/data/bronze/garmin_bronze.duckdb
+    duckdb_path: include/data/duckdb/garmin_db.duckdb
     quarantine_dir: include/data/quarantine
     assets:
       activities:
@@ -87,14 +87,19 @@ pipelines:
         extract:
           payload_kind: object
           records_path: lapDTOs
-          context_fields:
-            activity_id: activityId
+          context_key:
+            source:  activityId
+            target: activity_id
         target: 
           target_folder: splits
           target_table: splits
           primary_key: [activity_id, message_index]
           event_timestamp_column: updated_at
         column_mapping:
+          - target: activity_id
+            source: activityId
+            dtype: int64
+            required: true
           - target: start_time_gmt
             source: startTimeGMT
             dtype: string
@@ -102,7 +107,7 @@ pipelines:
           - target: intensity_type
             source: intensityType
             dtype: string
-            required: true
+            required: false
           - target: distance
             source: distance
             dtype: float64

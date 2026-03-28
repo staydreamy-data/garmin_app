@@ -7,7 +7,7 @@ from airflow.sdk import dag, task
 from pendulum import datetime
 from include.pipelines.ingest import ingest_garmin_activities_by_date
 from include.helpers.config import load_config
-from include.pipelines.write_to_stage import process_entity_to_stage
+from include.pipelines.write_to_stage import process_entity_to_stage, duckdb_append_files_to_table
 
 PIPELINE_NAME = "raw_to_bronze"
 
@@ -37,6 +37,14 @@ def raw_to_bronze():
 
     @task
     def get_config():
+        import os, socket, logging
+
+        logging.info(
+            "worker_identity hostname=%s pid=%s",
+            socket.gethostname(),
+            os.getpid(),
+        )
+
         config = load_config(PIPELINE_NAME)
         import logging
         logging.info(f"Loaded config for {PIPELINE_NAME}: {config['assets'].keys()}")
@@ -45,15 +53,10 @@ def raw_to_bronze():
     @task
     def activities_to_parquet(run_date: str, config: dict):
         process_entity_to_stage(run_date, config, entity="activities")
-        # TODO: Read raw activities JSON for run_date -> transform/select columns -> validate -> write staged parquet.
-        pass
-
+ 
     @task
     def splits_to_parquet(run_date: str, config: dict):
-
         process_entity_to_stage(run_date, config, entity="splits")
-        # TODO: Read raw splits JSON for run_date -> transform/select columns -> validate -> write staged parquet.
-        pass
 
     @task
     def activity_details_to_parquet(run_date: str, config: dict):
@@ -61,9 +64,17 @@ def raw_to_bronze():
         pass
 
     @task
-    def merge_to_duckdb():
-        # TODO: Read staged parquet files for run_date -> merge into DuckDB.
-        pass
+    def merge_to_duckdb(run_date: str, config: dict):
+        duckdb_path = config["duckdb_path"]
+        schema_name = "bronze"
+
+        for asset_name in config["assets"].keys():
+            column_mapping = config["assets"][asset_name]["column_mapping"]
+            parquet_files_path = f"{config["staging_path"]}/{asset_name}/dt={run_date}"
+            duckdb_append_files_to_table(duckdb_path=duckdb_path, schema_name=schema_name, 
+                                     table_name=asset_name, parquet_files_path=parquet_files_path,
+                                     column_mapping=column_mapping)
+
 
     @task
     def cleanup_staged_parquet():
@@ -76,7 +87,7 @@ def raw_to_bronze():
     splits_task = splits_to_parquet("{{ ds }}", config)
     activity_details_task = activity_details_to_parquet("{{ ds }}", config)
 
-    merge_to_duckdb_task = merge_to_duckdb()
+    merge_to_duckdb_task = merge_to_duckdb("{{ ds }}", config)
     cleanup_staged_parquet_task = cleanup_staged_parquet()
 
     config >> [activities_task, splits_task, activity_details_task] >> merge_to_duckdb_task >> cleanup_staged_parquet_task
