@@ -5,9 +5,9 @@
 
 from airflow.sdk import dag, task
 from pendulum import datetime
-from include.pipelines.ingest import ingest_garmin_activities_by_date
 from include.helpers.config import load_config
 from include.pipelines.write_to_stage import process_entity_to_stage, duckdb_append_files_to_table
+from include.pipelines.raw_to_bronze.transform_service import stage_asset_batch
 
 PIPELINE_NAME = "raw_to_bronze"
 
@@ -37,31 +37,30 @@ def raw_to_bronze():
 
     @task
     def get_config():
-        import os, socket, logging
+        return load_config(PIPELINE_NAME)
 
-        logging.info(
-            "worker_identity hostname=%s pid=%s",
-            socket.gethostname(),
-            os.getpid(),
-        )
+    @task
+    def get_enabled_assets(config: dict) -> list:
+        assets = config.get("assets", {})
+        return [asset_name for asset_name, asset_config in assets.items() if asset_config.get("enabled", True)]
 
-        config = load_config(PIPELINE_NAME)
-        import logging
-        logging.info(f"Loaded config for {PIPELINE_NAME}: {config['assets'].keys()}")
-        return config
+    @task
+    def transform_asset(run_date: str, asset_name: str, config: dict) -> dict:
+        return stage_asset_batch(run_date=run_date, asset_name=asset_name, raw_config=config)
+
 
     @task
     def activities_to_parquet(run_date: str, config: dict):
-        process_entity_to_stage(run_date, config, entity="activities")
- 
-    @task
-    def splits_to_parquet(run_date: str, config: dict):
-        process_entity_to_stage(run_date, config, entity="splits")
+        return stage_asset_batch(run_date=run_date, asset_name="activities", raw_config=config)
 
-    @task
-    def activity_details_to_parquet(run_date: str, config: dict):
-        # TODO: Read raw heartrate JSON for run_date -> transform/select columns -> validate -> write staged parquet.
-        pass
+    # @task
+    # def splits_to_parquet(run_date: str, config: dict):
+    #     process_entity_to_stage(run_date, config, entity="splits")
+
+    # @task
+    # def activity_details_to_parquet(run_date: str, config: dict):
+    #     # TODO: Read raw heartrate JSON for run_date -> transform/select columns -> validate -> write staged parquet.
+    #     pass
 
     @task
     def merge_to_duckdb(run_date: str, config: dict):
@@ -84,12 +83,15 @@ def raw_to_bronze():
     config = get_config()
 
     activities_task = activities_to_parquet("{{ ds }}", config)
-    splits_task = splits_to_parquet("{{ ds }}", config)
-    activity_details_task = activity_details_to_parquet("{{ ds }}", config)
+    # splits_task = splits_to_parquet("{{ ds }}", config)
+    # activity_details_task = activity_details_to_parquet("{{ ds }}", config)
 
-    merge_to_duckdb_task = merge_to_duckdb("{{ ds }}", config)
-    cleanup_staged_parquet_task = cleanup_staged_parquet()
+    asset_names = get_enabled_assets(config)
+    # transform_asset.partial(run_date="{{ ds }}", config=config).expand(asset_name=asset_names)
 
-    config >> [activities_task, splits_task, activity_details_task] >> merge_to_duckdb_task >> cleanup_staged_parquet_task
+    # merge_to_duckdb_task = merge_to_duckdb("{{ ds }}", config)
+    # cleanup_staged_parquet_task = cleanup_staged_parquet()
+
+    # config >> [transform_asset] >> merge_to_duckdb_task >> cleanup_staged_parquet_task
 
 raw_to_bronze()
