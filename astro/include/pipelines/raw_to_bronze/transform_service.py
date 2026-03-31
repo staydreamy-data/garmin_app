@@ -3,11 +3,35 @@ from dataclasses import asdict
 from .contracts import TransformResult
 from .config_parser import parse_pipeline_config, ConfigError
 from pathlib import Path
-from include.pipelines.validation import get_pandera_schema, validate_dataframe
+from include.pipelines.validation import validate_dataframe
 import json
 import logging
+import pandera.polars as pa
 import polars as pl
 from datetime import datetime
+
+DTYPE_MAP = {
+    "string": pl.Utf8,
+    "int64": pl.Int64,
+    "float64": pl.Float64,
+    "boolean": pl.Boolean,
+}
+
+def _get_pandera_schema(entity: str, mapping_json: str) -> pa.DataFrameSchema:
+    logging.info(f"Building pandera schema for {entity}")
+
+    column_mapping = json.loads(mapping_json)
+    cols = {}
+    for c in column_mapping:
+        required = c.get("required", False)
+        cols[c["target"]] = pa.Column(
+            DTYPE_MAP[c["dtype"]],
+            required=required,
+            nullable=not required,
+        )
+    return pa.DataFrameSchema(cols, strict=False, coerce=True)
+
+
 
 def _resolve_records(raw_data: dict | list, extract_config: dict) -> list:
     kind = extract_config["payload_kind"]
@@ -69,7 +93,7 @@ def stage_asset_batch(run_date: str, asset_name: str, raw_config: dict) -> dict:
 
     column_mapping = asset_config["column_mapping"]
 
-    pandera_schema = get_pandera_schema(asset_name, json.dumps(column_mapping, sort_keys=True))
+    pandera_schema = _get_pandera_schema(asset_name, json.dumps(column_mapping, sort_keys=True))
 
     files_seen = 0
     rows_valid = 0

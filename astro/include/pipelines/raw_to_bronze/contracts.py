@@ -7,3 +7,10 @@ class TransformResult:
     rows_valid: int
     rows_invalid: int
     staged_files: int
+
+
+@dataclass(frozen=True)
+class LoadResult:
+    asset: str
+    files_found: int
+    rows_loaded: int
