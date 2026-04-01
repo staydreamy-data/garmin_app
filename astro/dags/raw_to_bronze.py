@@ -2,11 +2,8 @@
 # Garmin Ingest DAG
 
 """
-from airflow.sdk import task, get_current_context
-
 from airflow.sdk import dag, task
 from pendulum import datetime
-from airflow.utils.trigger_rule import TriggerRule
 from include.helpers.config import load_config
 from include.pipelines.raw_to_bronze.transform_service import stage_asset_batch
 from include.pipelines.raw_to_bronze.load_service import append_to_bronze
@@ -66,7 +63,7 @@ def raw_to_bronze():
 
     @task
     def summarize_run(transform_results: list[dict], load_results: list[dict], cleanup_result: dict) -> dict:
-        log_run_summary(transform_results, load_results, cleanup_result)
+        return log_run_summary(transform_results, load_results, cleanup_result)
 
 
 

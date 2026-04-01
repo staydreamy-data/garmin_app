@@ -53,12 +53,16 @@ def log_run_summary(
 
     total_valid = sum(int(r.get("rows_valid") or 0) for r in transform_results)
     total_invalid = sum(int(r.get("rows_invalid") or 0) for r in transform_results)
+    total_quarantine_files = sum(
+        int(r.get("quarantine_files") or 0) for r in transform_results
+    )
     total_loaded = sum(int(r.get("rows_loaded") or 0) for r in load_results)
 
     summary = {
         "assets": [r.get("asset") for r in transform_results],
         "rows_valid": total_valid,
         "rows_invalid": total_invalid,
+        "quarantine_files": total_quarantine_files,
         "rows_loaded": total_loaded,
         "cleanup_deleted_files": int(cleanup_result.get("deleted_files") or 0),
     }
@@ -68,6 +72,8 @@ def log_run_summary(
     problems: list[str] = []
     if total_invalid > 0:
         problems.append(f"invalid_rows={total_invalid}")
+    if total_quarantine_files > 0:
+        problems.append(f"quarantine_files={total_quarantine_files}")
     if total_loaded != total_valid:
         problems.append(f"rows_loaded({total_loaded}) != rows_valid({total_valid})")
 
