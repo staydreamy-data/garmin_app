@@ -11,6 +11,7 @@ DTYPE_MAP = {
     "boolean": pl.Boolean,
 }
 
+
 def get_pandera_schema(entity: str, mapping_json: str) -> pa.DataFrameSchema:
     logging.info(f"Building pandera schema for {entity}")
 
@@ -25,7 +26,10 @@ def get_pandera_schema(entity: str, mapping_json: str) -> pa.DataFrameSchema:
         )
     return pa.DataFrameSchema(cols, strict=False, coerce=True)
 
-def validate_dataframe(entity: str, df: pl.DataFrame, pandera_schema: pa.DataFrameSchema):
+
+def validate_dataframe(
+    entity: str, df: pl.DataFrame, pandera_schema: pa.DataFrameSchema
+):
     try:
         pandera_schema.validate(df, lazy=True)
         logging.info(f"The data for entity {entity} passed the validation")
@@ -33,5 +37,7 @@ def validate_dataframe(entity: str, df: pl.DataFrame, pandera_schema: pa.DataFra
         logging.error(f"Schema validation failed for entity '{entity}': {e}")
         raise
     except Exception as e:
-        logging.error(f"Error happened during the validation. Please check the logs. {e}")
+        logging.error(
+            f"Error happened during the validation. Please check the logs. {e}"
+        )
         raise

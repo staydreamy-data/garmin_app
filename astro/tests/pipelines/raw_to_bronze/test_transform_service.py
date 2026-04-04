@@ -113,9 +113,7 @@ def test_stage_asset_batch_success_writes_staged_parquet(tmp_path: Path):
         {"activityId": 101, "activityType": {"typeKey": "running"}},
         {"activityId": 102, "activityType": {"typeKey": "running"}},
     ]
-    (source_dir / "activities_1.json").write_text(
-        json.dumps(payload), encoding="utf-8"
-    )
+    (source_dir / "activities_1.json").write_text(json.dumps(payload), encoding="utf-8")
 
     result = stage_asset_batch(
         run_date=run_date, asset_name="activities", raw_config=config
@@ -130,11 +128,7 @@ def test_stage_asset_batch_success_writes_staged_parquet(tmp_path: Path):
     }
 
     staged_file = (
-        tmp_path
-        / "stage"
-        / "activities"
-        / f"dt={run_date}"
-        / "activities_1.parquet"
+        tmp_path / "stage" / "activities" / f"dt={run_date}" / "activities_1.parquet"
     )
     assert staged_file.exists()
     staged_df = pl.read_parquet(staged_file)
@@ -189,7 +183,9 @@ def test_stage_asset_batch_context_key_injection(tmp_path: Path):
     }
     (source_dir / "splits_1.json").write_text(json.dumps(payload), encoding="utf-8")
 
-    result = stage_asset_batch(run_date=run_date, asset_name="splits", raw_config=config)
+    result = stage_asset_batch(
+        run_date=run_date, asset_name="splits", raw_config=config
+    )
 
     assert result["rows_valid"] == 2
     staged_file = tmp_path / "stage" / "splits" / f"dt={run_date}" / "splits_1.parquet"

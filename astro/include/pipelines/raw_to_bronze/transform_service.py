@@ -17,6 +17,7 @@ DTYPE_MAP = {
     "boolean": pl.Boolean,
 }
 
+
 def _get_pandera_schema(entity: str, mapping_json: str) -> pa.DataFrameSchema:
     logging.info(f"Building pandera schema for {entity}")
 
@@ -32,7 +33,6 @@ def _get_pandera_schema(entity: str, mapping_json: str) -> pa.DataFrameSchema:
     return pa.DataFrameSchema(cols, strict=False, coerce=True)
 
 
-
 def _resolve_records(raw_data: dict | list, extract_config: dict) -> list:
     kind = extract_config["payload_kind"]
     if kind == "list":
@@ -44,6 +44,7 @@ def _resolve_records(raw_data: dict | list, extract_config: dict) -> list:
         return raw_data.get(path, [])
     raise ConfigError(f"Unsupported payload_kind: {kind}")
 
+
 def _get_nested(record: dict, path: str):
     value = record
     for key in path.split("."):
@@ -54,11 +55,11 @@ def _get_nested(record: dict, path: str):
             return None
     return value
 
+
 def _map_raw_to_staged(records: list, columns_mapping: dict) -> list:
 
     mapped_records = []
     for record in records:
-
         mapped_record = {}
         for column_mapping in columns_mapping:
             target_column = column_mapping["target"]
@@ -69,6 +70,7 @@ def _map_raw_to_staged(records: list, columns_mapping: dict) -> list:
 
     return mapped_records
 
+
 def _write_to_parquet(df: pl.DataFrame, filepath: str):
     logging.info(f"Writing the parquet data into {filepath}")
     output_path = Path(filepath)
@@ -78,13 +80,16 @@ def _write_to_parquet(df: pl.DataFrame, filepath: str):
     df.write_parquet(tmp)
     tmp.replace(output_path)
 
+
 def stage_asset_batch(run_date: str, asset_name: str, raw_config: dict) -> dict:
     config = parse_pipeline_config(raw_config)
     asset_config = config["assets"][asset_name]
     extract_config = asset_config["extract"]
     context_key = extract_config.get("context_key")
 
-    source_dir = Path(config["source_path"]) / asset_config["source_folder"] / f"dt={run_date}"
+    source_dir = (
+        Path(config["source_path"]) / asset_config["source_folder"] / f"dt={run_date}"
+    )
     stage_dir = Path(config["staging_path"]) / asset_name / f"dt={run_date}"
     quarantine_dir = Path(config["quarantine_dir"]) / asset_name / f"dt={run_date}"
 
@@ -93,7 +98,9 @@ def stage_asset_batch(run_date: str, asset_name: str, raw_config: dict) -> dict:
 
     column_mapping = asset_config["column_mapping"]
 
-    pandera_schema = _get_pandera_schema(asset_name, json.dumps(column_mapping, sort_keys=True))
+    pandera_schema = _get_pandera_schema(
+        asset_name, json.dumps(column_mapping, sort_keys=True)
+    )
 
     files_seen = 0
     rows_valid = 0
@@ -137,10 +144,12 @@ def stage_asset_batch(run_date: str, asset_name: str, raw_config: dict) -> dict:
             )
             _write_to_parquet(out_df, str(stage_dir / f"{json_file.stem}.parquet"))
             staged_files += 1
-            rows_valid += out_df.height    
+            rows_valid += out_df.height
 
         if invalid_df.height > 0:
-            _write_to_parquet(invalid_df, str(quarantine_dir / f"{json_file.stem}.parquet"))
+            _write_to_parquet(
+                invalid_df, str(quarantine_dir / f"{json_file.stem}.parquet")
+            )
             rows_invalid += invalid_df.height
 
     return asdict(
@@ -151,4 +160,4 @@ def stage_asset_batch(run_date: str, asset_name: str, raw_config: dict) -> dict:
             rows_invalid=rows_invalid,
             staged_files=staged_files,
         )
-    )    
+    )

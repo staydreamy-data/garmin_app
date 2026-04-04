@@ -1,6 +1,9 @@
 import pytest
 
-from include.pipelines.raw_to_bronze.config_parser import ConfigError, parse_pipeline_config
+from include.pipelines.raw_to_bronze.config_parser import (
+    ConfigError,
+    parse_pipeline_config,
+)
 
 
 def test_parse_pipeline_config_returns_raw_config_when_assets_exist():

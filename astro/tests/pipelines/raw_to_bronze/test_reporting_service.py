@@ -39,7 +39,9 @@ def test_log_run_summary_fails_when_invalid_rows_exist():
 
 
 def test_log_run_summary_fails_when_loaded_does_not_match_valid():
-    with pytest.raises(AirflowFailException, match="rows_loaded\\(1\\) != rows_valid\\(2\\)"):
+    with pytest.raises(
+        AirflowFailException, match="rows_loaded\\(1\\) != rows_valid\\(2\\)"
+    ):
         log_run_summary(
             transform_results=[
                 {"asset": "activities", "rows_valid": 2, "rows_invalid": 0}

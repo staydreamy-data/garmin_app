@@ -75,11 +75,15 @@ def test_append_to_bronze_appends_rows_from_stage_partition(tmp_path: Path):
     )
     df.write_parquet(stage_dir / "activities_1.parquet")
 
-    result = append_to_bronze(run_date=run_date, asset_name="activities", raw_config=config)
+    result = append_to_bronze(
+        run_date=run_date, asset_name="activities", raw_config=config
+    )
     assert result == {"asset": "activities", "files_found": 1, "rows_loaded": 2}
 
     with duckdb.connect(str(tmp_path / "duckdb" / "garmin.duckdb")) as con:
-        row_count = con.execute('SELECT COUNT(*) FROM "bronze"."activities"').fetchone()[0]
+        row_count = con.execute(
+            'SELECT COUNT(*) FROM "bronze"."activities"'
+        ).fetchone()[0]
     assert row_count == 2
 
 

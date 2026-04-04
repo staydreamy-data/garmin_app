@@ -98,16 +98,10 @@ def test_ingest_by_date_writes_raw_and_asset_files(monkeypatch, tmp_path):
     assert json.loads(raw_files[0].read_text(encoding="utf-8")) == activities
 
     details_1001 = (
-        tmp_path
-        / "activity_details"
-        / "dt=2026-03-01"
-        / "activity_details_1001.json"
+        tmp_path / "activity_details" / "dt=2026-03-01" / "activity_details_1001.json"
     )
     details_1002 = (
-        tmp_path
-        / "activity_details"
-        / "dt=2026-03-01"
-        / "activity_details_1002.json"
+        tmp_path / "activity_details" / "dt=2026-03-01" / "activity_details_1002.json"
     )
     splits_1001 = tmp_path / "splits" / "dt=2026-03-01" / "splits_1001.json"
     splits_1002 = tmp_path / "splits" / "dt=2026-03-01" / "splits_1002.json"
