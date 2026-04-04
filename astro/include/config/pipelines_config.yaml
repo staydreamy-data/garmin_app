@@ -3,11 +3,140 @@ pipelines:
     storage_root: include/data/raw/garmin
     activities_folder: activities
     assets:
-      - key: heartrate
-        enabled: true
-        output_folder: heartrate
-        overwrite: true
       - key: splits
         enabled: true
         output_folder: splits
         overwrite: true
+      - key: activity_details
+        enabled: true
+        output_folder: activity_details
+        overwrite: true
+  raw_to_bronze:
+    source_path: include/data/raw/garmin
+    destination_path: include/data/bronze/running
+    staging_path: include/data/stage/raw_to_bronze
+    duckdb_path: include/data/duckdb/garmin_db.duckdb
+    quarantine_dir: include/data/quarantine
+    assets:
+      activities:
+        enabled: true
+        source_folder: activities
+        extract:
+          payload_kind: list
+        target: 
+          target_folder: activities
+          target_table: activities
+          primary_key: [activity_id]
+          event_timestamp_column: updated_at
+        column_mapping:
+          - target: activity_id
+            source: activityId
+            dtype: int64
+            required: true
+          - target: start_time_local
+            source: startTimeLocal
+            dtype: string
+            required: true
+          - target: start_time_gmt
+            source: startTimeGMT
+            dtype: string
+            required: true
+          - target: activity_name
+            source: activityName
+            dtype: string
+            required: false
+          - target: activity_type
+            source: activityType.typeKey
+            dtype: string
+            required: true
+          - target: distance
+            source: distance
+            dtype: float64
+            required: true
+          - target: duration
+            source: duration
+            dtype: float64
+            required: true
+          - target: owner_id
+            source: ownerId
+            dtype: int64
+            required: false
+          - target: owner_full_name
+            source: ownerFullName
+            dtype: string
+            required: false
+          - target: average_speed
+            source: averageSpeed
+            dtype: float64
+            required: false
+          - target: average_hr
+            source: averageHR
+            dtype: float64
+            required: false
+          - target: has_splits
+            source: hasSplits
+            dtype: boolean
+            required: false
+          - target: device_id
+            source: deviceId
+            dtype: int64
+            required: false
+      splits:
+        enabled: true
+        source_folder: splits
+        extract:
+          payload_kind: object
+          records_path: lapDTOs
+          context_key:
+            source:  activityId
+            target: activity_id
+        target: 
+          target_folder: splits
+          target_table: splits
+          primary_key: [activity_id, message_index]
+          event_timestamp_column: updated_at
+        column_mapping:
+          - target: activity_id
+            source: activityId
+            dtype: int64
+            required: true
+          - target: start_time_gmt
+            source: startTimeGMT
+            dtype: string
+            required: true
+          - target: intensity_type
+            source: intensityType
+            dtype: string
+            required: false
+          - target: distance
+            source: distance
+            dtype: float64
+            required: true
+          - target: duration
+            source: duration
+            dtype: float64
+            required: true
+          - target: average_speed
+            source: averageSpeed
+            dtype: float64
+            required: false
+          - target: average_hr
+            source: averageHR
+            dtype: float64
+            required: false
+          - target: max_hr
+            source: maxHR
+            dtype: float64
+            required: false
+          - target: message_index
+            source: messageIndex
+            dtype: int64
+            required: false
+      # - key: heartrate
+      #   enabled: true
+      #   output_folder: heartrate
+      #   overwrite: true
+      # - key: splits
+      #   enabled: true
+      #   output_folder: splits
+      #   overwrite: true

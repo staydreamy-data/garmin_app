@@ -32,9 +32,9 @@ def test_garmin_ingest_task_calls_config_and_pipeline(monkeypatch):
     fake_config = {
         "assets": [
             {
-                "key": "heartrate",
+                "key": "splits",
                 "enabled": True,
-                "output_folder": "heartrate",
+                "output_folder": "splits",
                 "overwrite": True,
             }
         ],
@@ -51,6 +51,7 @@ def test_garmin_ingest_task_calls_config_and_pipeline(monkeypatch):
 
     mock_load_config.assert_called_once_with("garmin_ingest")
     mock_ingest.assert_called_once_with(
+        "garmin_default",
         "2026-03-01",
         "include/data/raw/garmin",
         "activities",

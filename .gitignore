@@ -49,3 +49,5 @@ override.tf.json
 .terraform.lock.hcl
 
 astro/include/data/
+
+.codex

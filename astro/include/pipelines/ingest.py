@@ -6,8 +6,8 @@ import json
 from airflow.hooks.base import BaseHook
 
 METHOD_REGISTRY: dict[str, str] = {
-    "heartrate": "get_activity_hr_in_timezones",
     "splits": "get_activity_splits",
+    "activity_details": "get_activity_details",
 }
 
 
@@ -67,12 +67,20 @@ def ingest_garmin_activities_by_date(
 
     Path(full_location_path).mkdir(parents=True, exist_ok=True)
 
-    activities = client.get_activities_by_date((activity_date))
+    activities = client.get_activities_by_date(
+        startdate=activity_date, enddate=activity_date
+    )
+
+    with open(
+        f"{full_location_path}/activities_{ingestion_time}.json", "w", encoding="utf-8"
+    ) as f:
+        json.dump(activities, f, indent=4)
+
+    if not activities:
+        logging.info(f"No activities found for date: {activity_date}")
+        return
 
     logging.info(f"Retrieved {len(activities)} activities for date: {activity_date}")
-
-    with open(f"{full_location_path}/activities_{ingestion_time}.json", "w") as f:
-        json.dump(activities, f, indent=4)
 
     for activity in activities:
         activity_id = activity.get("activityId")
@@ -105,9 +113,18 @@ def ingest_garmin_activities_by_date(
                 continue
 
             method = getattr(client, method_name, None)
-            result = method(activity_id)
+            if method_name == "get_heart_rates":
+                result = method(activity_date)
+            else:
+                result = method(activity_id)
 
-            with open(output_file, "w") as f:
+            if not result:
+                logging.info(
+                    f"No data returned for {method_key} of activity {activity_id}. Skipping."
+                )
+                continue
+
+            with open(output_file, "w", encoding="utf-8") as f:
                 json.dump(result, f, indent=4)
 
             logging.info(
