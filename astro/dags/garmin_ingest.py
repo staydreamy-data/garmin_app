@@ -31,6 +31,7 @@ from include.helpers.config import load_config
 PIPELINE_NAME = "garmin_ingest"
 GARMIN_CONNECTION_ID = "garmin_default"
 
+
 @dag(
     start_date=datetime(2026, 1, 1),
     schedule="@daily",

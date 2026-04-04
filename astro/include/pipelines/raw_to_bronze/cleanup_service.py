@@ -2,7 +2,10 @@ from pathlib import Path
 import shutil
 import logging
 
-def cleanup_stage_batch(run_date: str, asset_names: list[str], raw_config: dict) -> dict:
+
+def cleanup_stage_batch(
+    run_date: str, asset_names: list[str], raw_config: dict
+) -> dict:
     staging_root = Path(raw_config["staging_path"]).resolve()
     deleted_paths = []
     deleted_files = 0

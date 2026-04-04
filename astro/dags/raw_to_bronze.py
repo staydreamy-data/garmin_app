@@ -2,6 +2,7 @@
 # Garmin Ingest DAG
 
 """
+
 from airflow.sdk import dag, task
 from pendulum import datetime
 from include.helpers.config import load_config
@@ -9,6 +10,7 @@ from include.pipelines.raw_to_bronze.transform_service import stage_asset_batch
 from include.pipelines.raw_to_bronze.load_service import append_to_bronze
 from include.pipelines.raw_to_bronze.cleanup_service import cleanup_stage_batch
 from include.pipelines.raw_to_bronze.reporting_service import log_run_summary
+
 PIPELINE_NAME = "raw_to_bronze"
 
 
@@ -42,40 +44,57 @@ def raw_to_bronze():
     @task
     def get_enabled_assets(config: dict) -> list:
         assets = config.get("assets", {})
-        return [asset_name for asset_name, asset_config in assets.items() if asset_config.get("enabled", True)]
+        return [
+            asset_name
+            for asset_name, asset_config in assets.items()
+            if asset_config.get("enabled", True)
+        ]
 
     @task
     def transform_asset(run_date: str, asset_name: str, config: dict) -> dict:
-        return stage_asset_batch(run_date=run_date, asset_name=asset_name, raw_config=config)
+        return stage_asset_batch(
+            run_date=run_date, asset_name=asset_name, raw_config=config
+        )
 
     @task
     def merge_assets(run_date: str, asset_names: list[str], config: dict) -> list[dict]:
         results = []
         for asset_name in asset_names:
             results.append(
-                append_to_bronze(run_date=run_date, asset_name=asset_name, raw_config=config)
+                append_to_bronze(
+                    run_date=run_date, asset_name=asset_name, raw_config=config
+                )
             )
         return results
 
     @task
-    def cleanup_staged_parquet(run_date: str, asset_names: list[str], config: dict) -> dict:
-        return cleanup_stage_batch(run_date=run_date, asset_names=asset_names, raw_config=config)
+    def cleanup_staged_parquet(
+        run_date: str, asset_names: list[str], config: dict
+    ) -> dict:
+        return cleanup_stage_batch(
+            run_date=run_date, asset_names=asset_names, raw_config=config
+        )
 
     @task
-    def summarize_run(transform_results: list[dict], load_results: list[dict], cleanup_result: dict) -> dict:
+    def summarize_run(
+        transform_results: list[dict], load_results: list[dict], cleanup_result: dict
+    ) -> dict:
         return log_run_summary(transform_results, load_results, cleanup_result)
-
-
 
     config = get_config()
 
     asset_names = get_enabled_assets(config)
-    transformed = transform_asset.partial(run_date="{{ ds }}", config=config).expand(asset_name=asset_names)
+    transformed = transform_asset.partial(run_date="{{ ds }}", config=config).expand(
+        asset_name=asset_names
+    )
 
     merged = merge_assets(run_date="{{ ds }}", asset_names=asset_names, config=config)
-    cleaned = cleanup_staged_parquet(run_date="{{ ds }}", asset_names=asset_names, config=config)
+    cleaned = cleanup_staged_parquet(
+        run_date="{{ ds }}", asset_names=asset_names, config=config
+    )
 
     summary = summarize_run(transformed, merged, cleaned)
     transformed >> merged >> cleaned >> summary
+
 
 raw_to_bronze()

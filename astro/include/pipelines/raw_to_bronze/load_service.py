@@ -18,6 +18,7 @@ METADATA_COLUMNS = [
     ("source_file", "VARCHAR"),
 ]
 
+
 def _build_duckdb_columns(column_mapping: list) -> list[tuple[str, str]]:
     cols = [(c["target"], DUCKDB_TYPE_MAP[c["dtype"]]) for c in column_mapping]
     return cols + METADATA_COLUMNS
@@ -33,7 +34,7 @@ def append_to_bronze(run_date: str, asset_name: str, raw_config: dict) -> dict:
     table_name = asset_config["target"]["target_table"]
     schema_name = "bronze"
 
-    stage_glob = f'{config["staging_path"]}/{asset_name}/dt={run_date}/*.parquet'
+    stage_glob = f"{config['staging_path']}/{asset_name}/dt={run_date}/*.parquet"
 
     db_file = Path(config["duckdb_path"])
     db_file.parent.mkdir(parents=True, exist_ok=True)
@@ -52,9 +53,7 @@ def append_to_bronze(run_date: str, asset_name: str, raw_config: dict) -> dict:
             "SELECT COUNT(*) FROM glob(?)", [stage_glob]
         ).fetchone()[0]
         if file_count == 0:
-            return asdict(
-                LoadResult(asset=asset_name, files_found=0, rows_loaded=0)
-            )
+            return asdict(LoadResult(asset=asset_name, files_found=0, rows_loaded=0))
 
         rows_loaded = con.execute(
             "SELECT COUNT(*) FROM read_parquet(?)", [stage_glob]

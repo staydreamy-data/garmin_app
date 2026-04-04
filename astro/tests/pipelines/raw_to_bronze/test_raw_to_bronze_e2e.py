@@ -77,7 +77,9 @@ def test_raw_to_bronze_service_flow_success(tmp_path: Path):
     assert summary["rows_invalid"] == 0
 
     with duckdb.connect(str(tmp_path / "duckdb" / "garmin.duckdb")) as con:
-        row_count = con.execute('SELECT COUNT(*) FROM "bronze"."activities"').fetchone()[0]
+        row_count = con.execute(
+            'SELECT COUNT(*) FROM "bronze"."activities"'
+        ).fetchone()[0]
     assert row_count == 2
 
     assert not (tmp_path / "stage" / "activities" / f"dt={run_date}").exists()

@@ -67,7 +67,9 @@ def ingest_garmin_activities_by_date(
 
     Path(full_location_path).mkdir(parents=True, exist_ok=True)
 
-    activities = client.get_activities_by_date(startdate=activity_date, enddate=activity_date)
+    activities = client.get_activities_by_date(
+        startdate=activity_date, enddate=activity_date
+    )
 
     with open(
         f"{full_location_path}/activities_{ingestion_time}.json", "w", encoding="utf-8"

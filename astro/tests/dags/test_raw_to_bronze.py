@@ -168,5 +168,7 @@ def test_summarize_run_delegates_to_reporting_service(monkeypatch):
         cleanup_result=cleanup_result,
     )
 
-    mock_summary.assert_called_once_with(transform_results, load_results, cleanup_result)
+    mock_summary.assert_called_once_with(
+        transform_results, load_results, cleanup_result
+    )
     assert result == {"rows_valid": 2, "rows_loaded": 2}
