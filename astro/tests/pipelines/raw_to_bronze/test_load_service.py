@@ -17,7 +17,7 @@ def _base_config(tmp_path: Path) -> dict:
         "duckdb_path": str(tmp_path / "duckdb" / "garmin.duckdb"),
         "assets": {
             "activities": {
-                "target": {"target_table": "activities"},
+                "target_table": "activities",
                 "column_mapping": [
                     {"target": "activity_id", "dtype": "int64"},
                     {"target": "activity_type", "dtype": "string"},

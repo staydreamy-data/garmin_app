@@ -24,7 +24,7 @@ def _base_config(tmp_path: Path) -> dict:
                 "enabled": True,
                 "source_folder": "activities",
                 "extract": {"payload_kind": "list"},
-                "target": {"target_table": "activities"},
+                "target_table": "activities",
                 "column_mapping": [
                     {
                         "target": "activity_id",
@@ -48,7 +48,7 @@ def _base_config(tmp_path: Path) -> dict:
                     "records_path": "lapDTOs",
                     "context_key": {"source": "activityId", "target": "activity_id"},
                 },
-                "target": {"target_table": "splits"},
+                "target_table": "splits",
                 "column_mapping": [
                     {
                         "target": "message_index",

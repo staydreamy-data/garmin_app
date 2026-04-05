@@ -31,7 +31,7 @@ def append_to_bronze(run_date: str, asset_name: str, raw_config: dict) -> dict:
     if not asset_config:
         raise ConfigError(f"Asset '{asset_name}' not found in raw_to_bronze.assets")
 
-    table_name = asset_config["target"]["target_table"]
+    table_name = asset_config["target_table"]
     schema_name = "bronze"
 
     stage_glob = f"{config['staging_path']}/{asset_name}/dt={run_date}/*.parquet"
