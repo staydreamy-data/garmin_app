@@ -105,7 +105,9 @@ def _resolve_descriptor_metrics(raw_data: dict, extract_config: dict) -> list[di
         for metric_index, metric_value in enumerate(metric_values):
             descriptor = descriptor_by_index.get(metric_index, {})
             metric_key = (
-                descriptor.get(schema_key_field) if isinstance(descriptor, dict) else None
+                descriptor.get(schema_key_field)
+                if isinstance(descriptor, dict)
+                else None
             )
 
             unit = {}

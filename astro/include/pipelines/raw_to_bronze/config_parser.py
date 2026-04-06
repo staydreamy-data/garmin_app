@@ -38,7 +38,12 @@ def parse_pipeline_config(raw: dict) -> dict:
         if not asset_config.get("enabled", True):
             continue
 
-        required_asset_fields = ["source_folder", "extract", "target_table", "column_mapping"]
+        required_asset_fields = [
+            "source_folder",
+            "extract",
+            "target_table",
+            "column_mapping",
+        ]
         for field in required_asset_fields:
             if field not in asset_config:
                 raise ConfigError(f"{asset_name}: missing required field '{field}'")

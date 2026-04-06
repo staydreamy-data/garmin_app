@@ -47,7 +47,9 @@ def test_parse_pipeline_config_raises_on_missing_target_table():
         }
     }
 
-    with pytest.raises(ConfigError, match="activities: missing required field 'target_table'"):
+    with pytest.raises(
+        ConfigError, match="activities: missing required field 'target_table'"
+    ):
         parse_pipeline_config(raw)
 
 

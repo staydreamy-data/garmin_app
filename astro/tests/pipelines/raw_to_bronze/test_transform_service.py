@@ -204,9 +204,7 @@ def test_stage_asset_batch_success_writes_staged_parquet(tmp_path: Path):
     assert {"ingested_at", "ingestion_date", "run_date", "source_file"}.issubset(
         set(staged_df.columns)
     )
-    assert not (
-        tmp_path / "quarantine" / "activities" / f"dt={run_date}"
-    ).exists()
+    assert not (tmp_path / "quarantine" / "activities" / f"dt={run_date}").exists()
 
 
 def test_stage_asset_batch_validation_failure_goes_to_quarantine(tmp_path: Path):
