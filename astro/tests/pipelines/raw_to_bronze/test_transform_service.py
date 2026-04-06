@@ -80,6 +80,74 @@ def test_resolve_records_for_object_payload():
     assert records == [{"idx": 1}, {"idx": 2}]
 
 
+def test_resolve_records_for_descriptor_metrics_payload():
+    raw_data = {
+        "activityId": 123,
+        "metricDescriptors": [
+            {
+                "metricsIndex": 0,
+                "key": "directSpeed",
+                "unit": {"key": "mps", "factor": 0.1},
+            },
+            {
+                "metricsIndex": 1,
+                "key": "directHeartRate",
+                "unit": {"key": "bpm", "factor": 1.0},
+            },
+        ],
+        "activityDetailMetrics": [
+            {"metrics": [3.1, 150]},
+            {"metrics": [3.2, 152]},
+        ],
+    }
+    extract = {
+        "payload_kind": "descriptor_metrics",
+        "schema_path": "metricDescriptors",
+        "schema_index_field": "metricsIndex",
+        "schema_key_field": "key",
+        "schema_unit_path": "unit",
+        "records_path": "activityDetailMetrics",
+        "values_path": "metrics",
+    }
+
+    records = _resolve_records(raw_data, extract)
+
+    assert records == [
+        {
+            "measurement_index": 0,
+            "metric_index": 0,
+            "metric_key": "directSpeed",
+            "metric_value": 3.1,
+            "unit_key": "mps",
+            "unit_factor": 0.1,
+        },
+        {
+            "measurement_index": 0,
+            "metric_index": 1,
+            "metric_key": "directHeartRate",
+            "metric_value": 150,
+            "unit_key": "bpm",
+            "unit_factor": 1.0,
+        },
+        {
+            "measurement_index": 1,
+            "metric_index": 0,
+            "metric_key": "directSpeed",
+            "metric_value": 3.2,
+            "unit_key": "mps",
+            "unit_factor": 0.1,
+        },
+        {
+            "measurement_index": 1,
+            "metric_index": 1,
+            "metric_key": "directHeartRate",
+            "metric_value": 152,
+            "unit_key": "bpm",
+            "unit_factor": 1.0,
+        },
+    ]
+
+
 def test_resolve_records_raises_for_unsupported_payload_kind():
     with pytest.raises(ConfigError, match="Unsupported payload_kind: weird"):
         _resolve_records([], {"payload_kind": "weird"})
@@ -136,6 +204,9 @@ def test_stage_asset_batch_success_writes_staged_parquet(tmp_path: Path):
     assert {"ingested_at", "ingestion_date", "run_date", "source_file"}.issubset(
         set(staged_df.columns)
     )
+    assert not (
+        tmp_path / "quarantine" / "activities" / f"dt={run_date}"
+    ).exists()
 
 
 def test_stage_asset_batch_validation_failure_goes_to_quarantine(tmp_path: Path):

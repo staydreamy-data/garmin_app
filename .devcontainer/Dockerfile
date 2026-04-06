@@ -11,12 +11,12 @@ RUN apt-get update -o Acquire::Retries=3 \
  && rm -rf /var/lib/apt/lists/*
 
 # Install DuckDB CLI (arch-aware)
-ARG DUCKDB_VERSION=1.1.3
+ARG DUCKDB_VERSION=1.5.1
 RUN set -eux; \
     arch="$(uname -m)"; \
     case "$arch" in \
       x86_64) duck_arch="linux-amd64" ;; \
-      aarch64|arm64) duck_arch="linux-aarch64" ;; \
+      aarch64|arm64) duck_arch="linux-arm64" ;; \
       *) echo "Unsupported arch: $arch" >&2; exit 1 ;; \
     esac; \
     curl -fsSL -o /tmp/duckdb.zip \

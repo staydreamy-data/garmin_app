@@ -126,6 +126,26 @@ pipelines:
       activity_details:
         enabled: true
         source_folder: activity_details
+        extract:
+          payload_kind: descriptor_metrics
+          schema_path: metricDescriptors
+          schema_index_field: metricsIndex
+          schema_key_field: key
+          schema_unit_path: unit
+          records_path: activityDetailMetrics
+          values_path: metrics
+          context_key:
+            source: activityId
+            target: activity_id
+        target_table: activity_details
+        column_mapping:
+          - { target: activity_id, source: activity_id, dtype: int64, required: true }
+          - { target: measurement_index, source: measurement_index, dtype: int64, required: true }
+          - { target: metric_index, source: metric_index, dtype: int64, required: true }
+          - { target: metric_key, source: metric_key, dtype: string, required: true }
+          - { target: metric_value, source: metric_value, dtype: float64, required: false }
+          - { target: unit_key, source: unit_key, dtype: string, required: false }
+          - { target: unit_factor, source: unit_factor, dtype: float64, required: false }
       # - key: heartrate
       #   enabled: true
       #   output_folder: heartrate
