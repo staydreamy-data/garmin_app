@@ -24,7 +24,7 @@ def _base_config(tmp_path: Path) -> dict:
                 "enabled": True,
                 "source_folder": "activities",
                 "extract": {"payload_kind": "list"},
-                "target": {"target_table": "activities"},
+                "target_table": "activities",
                 "column_mapping": [
                     {
                         "target": "activity_id",
@@ -48,7 +48,7 @@ def _base_config(tmp_path: Path) -> dict:
                     "records_path": "lapDTOs",
                     "context_key": {"source": "activityId", "target": "activity_id"},
                 },
-                "target": {"target_table": "splits"},
+                "target_table": "splits",
                 "column_mapping": [
                     {
                         "target": "message_index",
@@ -78,6 +78,74 @@ def test_resolve_records_for_object_payload():
     records = _resolve_records(raw_data, extract)
 
     assert records == [{"idx": 1}, {"idx": 2}]
+
+
+def test_resolve_records_for_descriptor_metrics_payload():
+    raw_data = {
+        "activityId": 123,
+        "metricDescriptors": [
+            {
+                "metricsIndex": 0,
+                "key": "directSpeed",
+                "unit": {"key": "mps", "factor": 0.1},
+            },
+            {
+                "metricsIndex": 1,
+                "key": "directHeartRate",
+                "unit": {"key": "bpm", "factor": 1.0},
+            },
+        ],
+        "activityDetailMetrics": [
+            {"metrics": [3.1, 150]},
+            {"metrics": [3.2, 152]},
+        ],
+    }
+    extract = {
+        "payload_kind": "descriptor_metrics",
+        "schema_path": "metricDescriptors",
+        "schema_index_field": "metricsIndex",
+        "schema_key_field": "key",
+        "schema_unit_path": "unit",
+        "records_path": "activityDetailMetrics",
+        "values_path": "metrics",
+    }
+
+    records = _resolve_records(raw_data, extract)
+
+    assert records == [
+        {
+            "measurement_index": 0,
+            "metric_index": 0,
+            "metric_key": "directSpeed",
+            "metric_value": 3.1,
+            "unit_key": "mps",
+            "unit_factor": 0.1,
+        },
+        {
+            "measurement_index": 0,
+            "metric_index": 1,
+            "metric_key": "directHeartRate",
+            "metric_value": 150,
+            "unit_key": "bpm",
+            "unit_factor": 1.0,
+        },
+        {
+            "measurement_index": 1,
+            "metric_index": 0,
+            "metric_key": "directSpeed",
+            "metric_value": 3.2,
+            "unit_key": "mps",
+            "unit_factor": 0.1,
+        },
+        {
+            "measurement_index": 1,
+            "metric_index": 1,
+            "metric_key": "directHeartRate",
+            "metric_value": 152,
+            "unit_key": "bpm",
+            "unit_factor": 1.0,
+        },
+    ]
 
 
 def test_resolve_records_raises_for_unsupported_payload_kind():
@@ -136,6 +204,7 @@ def test_stage_asset_batch_success_writes_staged_parquet(tmp_path: Path):
     assert {"ingested_at", "ingestion_date", "run_date", "source_file"}.issubset(
         set(staged_df.columns)
     )
+    assert not (tmp_path / "quarantine" / "activities" / f"dt={run_date}").exists()
 
 
 def test_stage_asset_batch_validation_failure_goes_to_quarantine(tmp_path: Path):
@@ -191,3 +260,44 @@ def test_stage_asset_batch_context_key_injection(tmp_path: Path):
     staged_file = tmp_path / "stage" / "splits" / f"dt={run_date}" / "splits_1.parquet"
     staged_df = pl.read_parquet(staged_file)
     assert staged_df["activity_id"].to_list() == [3001, 3001]
+
+
+def test_stage_asset_batch_keeps_optional_string_columns_typed_when_all_null(
+    tmp_path: Path,
+):
+    config = _base_config(tmp_path)
+    config["assets"]["splits"]["column_mapping"] = [
+        {
+            "target": "message_index",
+            "source": "messageIndex",
+            "dtype": "int64",
+            "required": True,
+        },
+        {
+            "target": "intensity_type",
+            "source": "intensityType",
+            "dtype": "string",
+            "required": False,
+        },
+    ]
+    run_date = "2026-03-18"
+
+    source_dir = tmp_path / "raw" / "splits" / f"dt={run_date}"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "activityId": 3002,
+        "lapDTOs": [{"messageIndex": 0}, {"messageIndex": 1}],
+    }
+    (source_dir / "splits_nulls.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    result = stage_asset_batch(
+        run_date=run_date, asset_name="splits", raw_config=config
+    )
+
+    assert result["rows_valid"] == 2
+    staged_file = (
+        tmp_path / "stage" / "splits" / f"dt={run_date}" / "splits_nulls.parquet"
+    )
+    staged_df = pl.read_parquet(staged_file)
+    assert staged_df.schema["intensity_type"] == pl.String
+    assert staged_df["intensity_type"].to_list() == [None, None]

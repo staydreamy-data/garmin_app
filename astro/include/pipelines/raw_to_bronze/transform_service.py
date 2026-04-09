@@ -42,6 +42,8 @@ def _resolve_records(raw_data: dict | list, extract_config: dict) -> list:
         if not isinstance(raw_data, dict) or not path:
             return []
         return raw_data.get(path, [])
+    if kind == "descriptor_metrics":
+        return _resolve_descriptor_metrics(raw_data, extract_config)
     raise ConfigError(f"Unsupported payload_kind: {kind}")
 
 
@@ -54,6 +56,78 @@ def _get_nested(record: dict, path: str):
         if value is None:
             return None
     return value
+
+
+def _resolve_descriptor_metrics(raw_data: dict, extract_config: dict) -> list[dict]:
+    if not isinstance(raw_data, dict):
+        return []
+
+    schema_path = extract_config.get("schema_path")
+    schema_index_field = extract_config.get("schema_index_field")
+    schema_key_field = extract_config.get("schema_key_field")
+    schema_unit_path = extract_config.get("schema_unit_path")
+    records_path = extract_config.get("records_path")
+    values_path = extract_config.get("values_path")
+
+    if not all(
+        [schema_path, schema_index_field, schema_key_field, records_path, values_path]
+    ):
+        raise ConfigError(
+            "descriptor_metrics requires: schema_path, schema_index_field, "
+            "schema_key_field, records_path, values_path"
+        )
+
+    descriptors = raw_data.get(schema_path, [])
+    measurements = raw_data.get(records_path, [])
+    if not isinstance(descriptors, list) or not isinstance(measurements, list):
+        return []
+
+    descriptor_by_index: dict[int, dict] = {}
+    for descriptor in descriptors:
+        if not isinstance(descriptor, dict):
+            continue
+        descriptor_index = descriptor.get(schema_index_field)
+        try:
+            if descriptor_index is None:
+                continue
+            descriptor_by_index[int(descriptor_index)] = descriptor
+        except (TypeError, ValueError):
+            continue
+
+    resolved_rows: list[dict] = []
+    for measurement_index, measurement in enumerate(measurements):
+        if not isinstance(measurement, dict):
+            continue
+        metric_values = measurement.get(values_path, [])
+        if not isinstance(metric_values, list):
+            continue
+
+        for metric_index, metric_value in enumerate(metric_values):
+            descriptor = descriptor_by_index.get(metric_index, {})
+            metric_key = (
+                descriptor.get(schema_key_field)
+                if isinstance(descriptor, dict)
+                else None
+            )
+
+            unit = {}
+            if schema_unit_path and isinstance(descriptor, dict):
+                unit_value = _get_nested(descriptor, schema_unit_path)
+                if isinstance(unit_value, dict):
+                    unit = unit_value
+
+            resolved_rows.append(
+                {
+                    "measurement_index": measurement_index,
+                    "metric_index": metric_index,
+                    "metric_key": metric_key,
+                    "metric_value": metric_value,
+                    "unit_key": unit.get("key"),
+                    "unit_factor": unit.get("factor"),
+                }
+            )
+
+    return resolved_rows
 
 
 def _map_raw_to_staged(records: list, columns_mapping: dict) -> list:
@@ -81,6 +155,20 @@ def _write_to_parquet(df: pl.DataFrame, filepath: str):
     tmp.replace(output_path)
 
 
+def _cast_dataframe_to_schema(
+    df: pl.DataFrame, column_mapping: list[dict]
+) -> pl.DataFrame:
+    # Keep parquet schemas stable across files: optional columns like
+    # intensity_type may be all NULL in one batch and strings in another.
+    cast_expressions = [
+        pl.col(column["target"])
+        .cast(DTYPE_MAP[column["dtype"]], strict=False)
+        .alias(column["target"])
+        for column in column_mapping
+    ]
+    return df.with_columns(cast_expressions)
+
+
 def stage_asset_batch(run_date: str, asset_name: str, raw_config: dict) -> dict:
     config = parse_pipeline_config(raw_config)
     asset_config = config["assets"][asset_name]
@@ -92,9 +180,6 @@ def stage_asset_batch(run_date: str, asset_name: str, raw_config: dict) -> dict:
     )
     stage_dir = Path(config["staging_path"]) / asset_name / f"dt={run_date}"
     quarantine_dir = Path(config["quarantine_dir"]) / asset_name / f"dt={run_date}"
-
-    stage_dir.mkdir(parents=True, exist_ok=True)
-    quarantine_dir.mkdir(parents=True, exist_ok=True)
 
     column_mapping = asset_config["column_mapping"]
 
@@ -118,11 +203,16 @@ def stage_asset_batch(run_date: str, asset_name: str, raw_config: dict) -> dict:
         mapped_rows = _map_raw_to_staged(records, column_mapping)
         logging.info(f"{mapped_rows}")
         if context_key:
-            context_key_value = raw_data[context_key["source"]]
-            for row in mapped_rows:
-                row[context_key["target"]] = context_key_value
+            context_source = context_key.get("source")
+            context_target = context_key.get("target")
+            context_key_value = (
+                _get_nested(raw_data, context_source) if context_source else None
+            )
+            if context_target:
+                for row in mapped_rows:
+                    row[context_target] = context_key_value
 
-        df = pl.DataFrame(mapped_rows)
+        df = _cast_dataframe_to_schema(pl.DataFrame(mapped_rows), column_mapping)
         if df.is_empty():
             logging.info(f"No records to process in file: {json_file}")
             continue

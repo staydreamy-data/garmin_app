@@ -13,7 +13,6 @@ pipelines:
         overwrite: true
   raw_to_bronze:
     source_path: include/data/raw/garmin
-    destination_path: include/data/bronze/running
     staging_path: include/data/stage/raw_to_bronze
     duckdb_path: include/data/duckdb/garmin_db.duckdb
     quarantine_dir: include/data/quarantine
@@ -23,11 +22,7 @@ pipelines:
         source_folder: activities
         extract:
           payload_kind: list
-        target: 
-          target_folder: activities
-          target_table: activities
-          primary_key: [activity_id]
-          event_timestamp_column: updated_at
+        target_table: activities
         column_mapping:
           - target: activity_id
             source: activityId
@@ -90,11 +85,7 @@ pipelines:
           context_key:
             source:  activityId
             target: activity_id
-        target: 
-          target_folder: splits
-          target_table: splits
-          primary_key: [activity_id, message_index]
-          event_timestamp_column: updated_at
+        target_table: splits
         column_mapping:
           - target: activity_id
             source: activityId
@@ -132,6 +123,29 @@ pipelines:
             source: messageIndex
             dtype: int64
             required: false
+      activity_details:
+        enabled: true
+        source_folder: activity_details
+        extract:
+          payload_kind: descriptor_metrics
+          schema_path: metricDescriptors
+          schema_index_field: metricsIndex
+          schema_key_field: key
+          schema_unit_path: unit
+          records_path: activityDetailMetrics
+          values_path: metrics
+          context_key:
+            source: activityId
+            target: activity_id
+        target_table: activity_details
+        column_mapping:
+          - { target: activity_id, source: activity_id, dtype: int64, required: true }
+          - { target: measurement_index, source: measurement_index, dtype: int64, required: true }
+          - { target: metric_index, source: metric_index, dtype: int64, required: true }
+          - { target: metric_key, source: metric_key, dtype: string, required: true }
+          - { target: metric_value, source: metric_value, dtype: float64, required: false }
+          - { target: unit_key, source: unit_key, dtype: string, required: false }
+          - { target: unit_factor, source: unit_factor, dtype: float64, required: false }
       # - key: heartrate
       #   enabled: true
       #   output_folder: heartrate
