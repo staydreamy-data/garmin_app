@@ -51,3 +51,7 @@ override.tf.json
 astro/include/data/
 
 .codex
+
+dbt/target/
+dbt/logs/
+dbt/.user.yml
