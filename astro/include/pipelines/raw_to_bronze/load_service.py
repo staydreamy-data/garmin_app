@@ -24,6 +24,10 @@ def _build_duckdb_columns(column_mapping: list) -> list[tuple[str, str]]:
     return cols + METADATA_COLUMNS
 
 
+def _read_parquet_query() -> str:
+    return "read_parquet(?, union_by_name = true)"
+
+
 def append_to_bronze(run_date: str, asset_name: str, raw_config: dict) -> dict:
     config = parse_pipeline_config(raw_config)
 
@@ -56,12 +60,12 @@ def append_to_bronze(run_date: str, asset_name: str, raw_config: dict) -> dict:
             return asdict(LoadResult(asset=asset_name, files_found=0, rows_loaded=0))
 
         rows_loaded = con.execute(
-            "SELECT COUNT(*) FROM read_parquet(?)", [stage_glob]
+            f"SELECT COUNT(*) FROM {_read_parquet_query()}", [stage_glob]
         ).fetchone()[0]
 
         con.execute(
             f'INSERT INTO "{schema_name}"."{table_name}" ({column_names}) '
-            f"SELECT {column_names} FROM read_parquet(?)",
+            f"SELECT {column_names} FROM {_read_parquet_query()}",
             [stage_glob],
         )
 

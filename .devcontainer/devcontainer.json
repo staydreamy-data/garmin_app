@@ -7,7 +7,7 @@
     "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
   "remoteUser": "vscode",
-  "postCreateCommand": "uv sync",
+  "postCreateCommand": "uv sync --extra airflow-tests --cache-dir .uv-cache",
   "customizations": {
     "vscode": {
       "extensions": [

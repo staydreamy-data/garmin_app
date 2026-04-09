@@ -155,6 +155,20 @@ def _write_to_parquet(df: pl.DataFrame, filepath: str):
     tmp.replace(output_path)
 
 
+def _cast_dataframe_to_schema(
+    df: pl.DataFrame, column_mapping: list[dict]
+) -> pl.DataFrame:
+    # Keep parquet schemas stable across files: optional columns like
+    # intensity_type may be all NULL in one batch and strings in another.
+    cast_expressions = [
+        pl.col(column["target"])
+        .cast(DTYPE_MAP[column["dtype"]], strict=False)
+        .alias(column["target"])
+        for column in column_mapping
+    ]
+    return df.with_columns(cast_expressions)
+
+
 def stage_asset_batch(run_date: str, asset_name: str, raw_config: dict) -> dict:
     config = parse_pipeline_config(raw_config)
     asset_config = config["assets"][asset_name]
@@ -198,7 +212,7 @@ def stage_asset_batch(run_date: str, asset_name: str, raw_config: dict) -> dict:
                 for row in mapped_rows:
                     row[context_target] = context_key_value
 
-        df = pl.DataFrame(mapped_rows)
+        df = _cast_dataframe_to_schema(pl.DataFrame(mapped_rows), column_mapping)
         if df.is_empty():
             logging.info(f"No records to process in file: {json_file}")
             continue

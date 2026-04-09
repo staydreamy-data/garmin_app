@@ -100,3 +100,46 @@ def test_append_to_bronze_raises_for_unknown_asset(tmp_path: Path):
             asset_name="unknown",
             raw_config=config,
         )
+
+
+def test_append_to_bronze_handles_mixed_parquet_column_types(tmp_path: Path):
+    config = _base_config(tmp_path)
+    run_date = "2026-03-18"
+
+    stage_dir = tmp_path / "stage" / "activities" / f"dt={run_date}"
+    stage_dir.mkdir(parents=True, exist_ok=True)
+
+    pl.DataFrame(
+        {
+            "activity_id": [1001],
+            "activity_type": pl.Series("activity_type", [None], dtype=pl.Null),
+            "ingested_at": ["2026-03-18T10:00:00"],
+            "ingestion_date": ["2026-03-18"],
+            "run_date": ["2026-03-18"],
+            "source_file": ["activities_1.json"],
+        }
+    ).write_parquet(stage_dir / "activities_1.parquet")
+
+    pl.DataFrame(
+        {
+            "activity_id": [1002],
+            "activity_type": ["running"],
+            "ingested_at": ["2026-03-18T10:05:00"],
+            "ingestion_date": ["2026-03-18"],
+            "run_date": ["2026-03-18"],
+            "source_file": ["activities_2.json"],
+        }
+    ).write_parquet(stage_dir / "activities_2.parquet")
+
+    result = append_to_bronze(
+        run_date=run_date, asset_name="activities", raw_config=config
+    )
+
+    assert result == {"asset": "activities", "files_found": 2, "rows_loaded": 2}
+
+    with duckdb.connect(str(tmp_path / "duckdb" / "garmin.duckdb")) as con:
+        rows = con.execute(
+            'SELECT "activity_id", "activity_type" FROM "bronze"."activities" ORDER BY "activity_id"'
+        ).fetchall()
+
+    assert rows == [(1001, None), (1002, "running")]

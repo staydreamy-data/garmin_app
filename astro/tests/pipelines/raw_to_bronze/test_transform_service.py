@@ -260,3 +260,44 @@ def test_stage_asset_batch_context_key_injection(tmp_path: Path):
     staged_file = tmp_path / "stage" / "splits" / f"dt={run_date}" / "splits_1.parquet"
     staged_df = pl.read_parquet(staged_file)
     assert staged_df["activity_id"].to_list() == [3001, 3001]
+
+
+def test_stage_asset_batch_keeps_optional_string_columns_typed_when_all_null(
+    tmp_path: Path,
+):
+    config = _base_config(tmp_path)
+    config["assets"]["splits"]["column_mapping"] = [
+        {
+            "target": "message_index",
+            "source": "messageIndex",
+            "dtype": "int64",
+            "required": True,
+        },
+        {
+            "target": "intensity_type",
+            "source": "intensityType",
+            "dtype": "string",
+            "required": False,
+        },
+    ]
+    run_date = "2026-03-18"
+
+    source_dir = tmp_path / "raw" / "splits" / f"dt={run_date}"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "activityId": 3002,
+        "lapDTOs": [{"messageIndex": 0}, {"messageIndex": 1}],
+    }
+    (source_dir / "splits_nulls.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    result = stage_asset_batch(
+        run_date=run_date, asset_name="splits", raw_config=config
+    )
+
+    assert result["rows_valid"] == 2
+    staged_file = (
+        tmp_path / "stage" / "splits" / f"dt={run_date}" / "splits_nulls.parquet"
+    )
+    staged_df = pl.read_parquet(staged_file)
+    assert staged_df.schema["intensity_type"] == pl.String
+    assert staged_df["intensity_type"].to_list() == [None, None]
