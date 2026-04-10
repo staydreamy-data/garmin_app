@@ -1,0 +1,9 @@
+
+garmin_training_log:
+  outputs:
+    dev:
+      type: duckdb
+      path: ../astro/include/data/duckdb/garmin_db.duckdb
+      threads: 1
+
+  target: dev

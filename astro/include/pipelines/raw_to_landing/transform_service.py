@@ -1,4 +1,4 @@
-# astro/include/pipelines/raw_to_bronze/transform_service.py
+# astro/include/pipelines/raw_to_landing/transform_service.py
 from dataclasses import asdict
 from .contracts import TransformResult
 from .config_parser import parse_pipeline_config, ConfigError
@@ -145,6 +145,14 @@ def _map_raw_to_staged(records: list, columns_mapping: dict) -> list:
     return mapped_records
 
 
+def _iter_source_files(source_dir: Path, payload_kind: str) -> list[Path]:
+    json_files = sorted(source_dir.glob("*.json"))
+    if payload_kind == "list" and json_files:
+        # Treat list payloads as a daily snapshot and keep only the latest file.
+        return [json_files[-1]]
+    return json_files
+
+
 def _write_to_parquet(df: pl.DataFrame, filepath: str):
     logging.info(f"Writing the parquet data into {filepath}")
     output_path = Path(filepath)
@@ -169,6 +177,17 @@ def _cast_dataframe_to_schema(
     return df.with_columns(cast_expressions)
 
 
+def _attach_metadata(
+    df: pl.DataFrame, run_date: str, source_file: str, ingestion_datetime: datetime
+) -> pl.DataFrame:
+    return df.with_columns(
+        pl.lit(ingestion_datetime.isoformat()).alias("ingested_at"),
+        pl.lit(ingestion_datetime.date().isoformat()).alias("ingestion_date"),
+        pl.lit(run_date).alias("run_date"),
+        pl.lit(source_file).alias("source_file"),
+    )
+
+
 def stage_asset_batch(run_date: str, asset_name: str, raw_config: dict) -> dict:
     config = parse_pipeline_config(raw_config)
     asset_config = config["assets"][asset_name]
@@ -178,7 +197,7 @@ def stage_asset_batch(run_date: str, asset_name: str, raw_config: dict) -> dict:
     source_dir = (
         Path(config["source_path"]) / asset_config["source_folder"] / f"dt={run_date}"
     )
-    stage_dir = Path(config["staging_path"]) / asset_name / f"dt={run_date}"
+    stage_dir = Path(config["landing_path"]) / asset_name / f"dt={run_date}"
     quarantine_dir = Path(config["quarantine_dir"]) / asset_name / f"dt={run_date}"
 
     column_mapping = asset_config["column_mapping"]
@@ -190,18 +209,19 @@ def stage_asset_batch(run_date: str, asset_name: str, raw_config: dict) -> dict:
     files_seen = 0
     rows_valid = 0
     rows_invalid = 0
-    staged_files = 0
+    staged_output = stage_dir / f"{asset_name}.parquet"
+    quarantine_output = quarantine_dir / f"{asset_name}.parquet"
+    valid_batches: list[pl.DataFrame] = []
+    invalid_batches: list[pl.DataFrame] = []
 
     ingestion_datetime = datetime.now()
 
-    for json_file in sorted(source_dir.glob("*.json")):
+    for json_file in _iter_source_files(source_dir, extract_config["payload_kind"]):
         files_seen += 1
         raw_data = json.loads(json_file.read_text(encoding="utf-8"))
 
         records = _resolve_records(raw_data, extract_config)
-        logging.info(f"{records}")
         mapped_rows = _map_raw_to_staged(records, column_mapping)
-        logging.info(f"{mapped_rows}")
         if context_key:
             context_source = context_key.get("source")
             context_target = context_key.get("target")
@@ -217,30 +237,37 @@ def stage_asset_batch(run_date: str, asset_name: str, raw_config: dict) -> dict:
             logging.info(f"No records to process in file: {json_file}")
             continue
 
+        enriched_df = _attach_metadata(df, run_date, json_file.name, ingestion_datetime)
+
         try:
             validate_dataframe(entity=asset_name, df=df, pandera_schema=pandera_schema)
-            valid_df = df
-            invalid_df = pl.DataFrame(schema=df.schema)
+            valid_df = enriched_df
+            invalid_df = pl.DataFrame(schema=enriched_df.schema)
         except Exception:
-            valid_df = pl.DataFrame(schema=df.schema)
-            invalid_df = df
+            valid_df = pl.DataFrame(schema=enriched_df.schema)
+            invalid_df = enriched_df
 
         if valid_df.height > 0:
-            out_df = valid_df.with_columns(
-                pl.lit(ingestion_datetime.isoformat()).alias("ingested_at"),
-                pl.lit(ingestion_datetime.date().isoformat()).alias("ingestion_date"),
-                pl.lit(run_date).alias("run_date"),
-                pl.lit(json_file.name).alias("source_file"),
-            )
-            _write_to_parquet(out_df, str(stage_dir / f"{json_file.stem}.parquet"))
-            staged_files += 1
-            rows_valid += out_df.height
+            valid_batches.append(valid_df)
+            rows_valid += valid_df.height
 
         if invalid_df.height > 0:
-            _write_to_parquet(
-                invalid_df, str(quarantine_dir / f"{json_file.stem}.parquet")
-            )
+            invalid_batches.append(invalid_df)
             rows_invalid += invalid_df.height
+
+    staged_files = 0
+    if valid_batches:
+        staged_df = pl.concat(valid_batches, how="vertical_relaxed")
+        _write_to_parquet(staged_df, str(staged_output))
+        staged_files = 1
+    elif staged_output.exists():
+        staged_output.unlink()
+
+    if invalid_batches:
+        quarantine_df = pl.concat(invalid_batches, how="vertical_relaxed")
+        _write_to_parquet(quarantine_df, str(quarantine_output))
+    elif quarantine_output.exists():
+        quarantine_output.unlink()
 
     return asdict(
         TransformResult(

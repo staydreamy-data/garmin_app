@@ -1,6 +1,6 @@
 import pytest
 
-from include.pipelines.raw_to_bronze.config_parser import (
+from include.pipelines.raw_to_landing.config_parser import (
     ConfigError,
     parse_pipeline_config,
 )
@@ -28,9 +28,9 @@ def test_parse_pipeline_config_returns_raw_config_when_assets_exist():
 
 def test_parse_pipeline_config_raises_on_missing_assets():
     with pytest.raises(
-        ConfigError, match="Missing required field: raw_to_bronze.assets"
+        ConfigError, match="Missing required field: raw_to_landing.assets"
     ):
-        parse_pipeline_config({"staging_path": "include/data/stage/raw_to_bronze"})
+        parse_pipeline_config({"landing_path": "include/data/landing"})
 
 
 def test_parse_pipeline_config_raises_on_missing_target_table():
