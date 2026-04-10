@@ -4,8 +4,8 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from include.pipelines.raw_to_bronze.config_parser import ConfigError
-from include.pipelines.raw_to_bronze.transform_service import (
+from include.pipelines.raw_to_landing.config_parser import ConfigError
+from include.pipelines.raw_to_landing.transform_service import (
     _get_nested,
     _map_raw_to_staged,
     _resolve_records,
@@ -16,9 +16,8 @@ from include.pipelines.raw_to_bronze.transform_service import (
 def _base_config(tmp_path: Path) -> dict:
     return {
         "source_path": str(tmp_path / "raw"),
-        "staging_path": str(tmp_path / "stage"),
+        "landing_path": str(tmp_path / "landing"),
         "quarantine_dir": str(tmp_path / "quarantine"),
-        "duckdb_path": str(tmp_path / "duckdb" / "garmin.duckdb"),
         "assets": {
             "activities": {
                 "enabled": True,
@@ -196,7 +195,7 @@ def test_stage_asset_batch_success_writes_staged_parquet(tmp_path: Path):
     }
 
     staged_file = (
-        tmp_path / "stage" / "activities" / f"dt={run_date}" / "activities_1.parquet"
+        tmp_path / "landing" / "activities" / f"dt={run_date}" / "activities.parquet"
     )
     assert staged_file.exists()
     staged_df = pl.read_parquet(staged_file)
@@ -231,11 +230,7 @@ def test_stage_asset_batch_validation_failure_goes_to_quarantine(tmp_path: Path)
     }
 
     quarantine_file = (
-        tmp_path
-        / "quarantine"
-        / "activities"
-        / f"dt={run_date}"
-        / "activities_bad.parquet"
+        tmp_path / "quarantine" / "activities" / f"dt={run_date}" / "activities.parquet"
     )
     assert quarantine_file.exists()
 
@@ -257,7 +252,7 @@ def test_stage_asset_batch_context_key_injection(tmp_path: Path):
     )
 
     assert result["rows_valid"] == 2
-    staged_file = tmp_path / "stage" / "splits" / f"dt={run_date}" / "splits_1.parquet"
+    staged_file = tmp_path / "landing" / "splits" / f"dt={run_date}" / "splits.parquet"
     staged_df = pl.read_parquet(staged_file)
     assert staged_df["activity_id"].to_list() == [3001, 3001]
 
@@ -295,9 +290,33 @@ def test_stage_asset_batch_keeps_optional_string_columns_typed_when_all_null(
     )
 
     assert result["rows_valid"] == 2
-    staged_file = (
-        tmp_path / "stage" / "splits" / f"dt={run_date}" / "splits_nulls.parquet"
-    )
+    staged_file = tmp_path / "landing" / "splits" / f"dt={run_date}" / "splits.parquet"
     staged_df = pl.read_parquet(staged_file)
     assert staged_df.schema["intensity_type"] == pl.String
     assert staged_df["intensity_type"].to_list() == [None, None]
+
+
+def test_stage_asset_batch_list_payload_uses_latest_snapshot_on_rerun(tmp_path: Path):
+    config = _base_config(tmp_path)
+    run_date = "2026-03-18"
+
+    source_dir = tmp_path / "raw" / "activities" / f"dt={run_date}"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    (source_dir / "activities_1.json").write_text(
+        json.dumps([{"activityId": 101, "activityType": {"typeKey": "running"}}]),
+        encoding="utf-8",
+    )
+    (source_dir / "activities_2.json").write_text(
+        json.dumps([{"activityId": 202, "activityType": {"typeKey": "cycling"}}]),
+        encoding="utf-8",
+    )
+
+    result = stage_asset_batch(
+        run_date=run_date, asset_name="activities", raw_config=config
+    )
+
+    assert result["files_seen"] == 1
+    staged_df = pl.read_parquet(
+        tmp_path / "landing" / "activities" / f"dt={run_date}" / "activities.parquet"
+    )
+    assert staged_df.select("activity_id").to_series().to_list() == [202]

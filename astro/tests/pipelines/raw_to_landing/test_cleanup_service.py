@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from include.pipelines.raw_to_bronze.cleanup_service import cleanup_stage_batch
+from include.pipelines.raw_to_landing.cleanup_service import cleanup_stage_batch
 
 
 def test_cleanup_deletes_only_requested_partition(tmp_path: Path):
@@ -20,7 +20,7 @@ def test_cleanup_deletes_only_requested_partition(tmp_path: Path):
     result = cleanup_stage_batch(
         run_date=run_date,
         asset_names=["activities"],
-        raw_config={"staging_path": str(staging_root)},
+        raw_config={"landing_path": str(staging_root)},
     )
 
     assert result["deleted_files"] == 1
@@ -37,7 +37,7 @@ def test_cleanup_safety_guard_rejects_unsafe_asset_path(tmp_path: Path):
         cleanup_stage_batch(
             run_date="2026-03-18",
             asset_names=["../../escape"],
-            raw_config={"staging_path": str(staging_root)},
+            raw_config={"landing_path": str(staging_root)},
         )
 
 
@@ -48,7 +48,7 @@ def test_cleanup_handles_missing_partition_without_failing(tmp_path: Path):
     result = cleanup_stage_batch(
         run_date="2026-03-18",
         asset_names=["activities"],
-        raw_config={"staging_path": str(staging_root)},
+        raw_config={"landing_path": str(staging_root)},
     )
 
     assert result["deleted_files"] == 0

@@ -30,7 +30,7 @@ def _validate_extract(asset_name: str, extract: dict):
 def parse_pipeline_config(raw: dict) -> dict:
     assets = raw.get("assets")
     if not isinstance(assets, dict):
-        raise ConfigError("Missing required field: raw_to_bronze.assets")
+        raise ConfigError("Missing required field: raw_to_landing.assets")
 
     for asset_name, asset_config in assets.items():
         if not isinstance(asset_config, dict):

@@ -11,10 +11,9 @@ pipelines:
         enabled: true
         output_folder: activity_details
         overwrite: true
-  raw_to_bronze:
+  raw_to_landing:
     source_path: include/data/raw/garmin
-    staging_path: include/data/stage/raw_to_bronze
-    duckdb_path: include/data/duckdb/garmin_db.duckdb
+    landing_path: include/data/landing
     quarantine_dir: include/data/quarantine
     assets:
       activities:
