@@ -6,6 +6,7 @@ on:
       - "main"
     paths:
       - "**/*.py"
+      - "dbt/**"
       - "tests/**"
       - "pyproject.toml"
       - "uv.lock"
@@ -57,3 +58,9 @@ jobs:
           else
             echo "No changes to commit."
           fi
+
+      - name: Prepare DuckDB dir
+        run: mkdir -p astro/include/data/duckdb
+
+      - name: dbt compile
+        run: uv run dbt compile --project-dir dbt --profiles-dir dbt

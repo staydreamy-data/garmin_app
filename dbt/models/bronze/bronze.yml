@@ -1,0 +1,102 @@
+version: 2
+
+models:
+  - name: activities
+    description: "Bronze activity records loaded from landing parquet files for one logical Garmin activity date partition."
+    columns:
+      - name: activity_id
+        description: "Garmin activity identifier."
+      - name: start_time_local
+        description: "Activity start timestamp in the athlete's local time."
+      - name: start_time_gmt
+        description: "Activity start timestamp in GMT/UTC."
+      - name: activity_name
+        description: "User-facing Garmin activity name."
+      - name: activity_type
+        description: "Normalized Garmin activity type key, for example running or cycling."
+      - name: distance
+        description: "Total activity distance reported by Garmin."
+      - name: duration
+        description: "Total activity duration reported by Garmin."
+      - name: owner_id
+        description: "Garmin owner identifier for the activity."
+      - name: owner_full_name
+        description: "Full display name of the activity owner."
+      - name: average_speed
+        description: "Average speed reported for the activity."
+      - name: average_hr
+        description: "Average heart rate reported for the activity."
+      - name: has_splits
+        description: "Whether Garmin reports split data for the activity."
+      - name: device_id
+        description: "Garmin device identifier that recorded the activity."
+      - name: ingested_at
+        description: "Timestamp when the raw-to-landing pipeline processed the source JSON file."
+      - name: ingestion_date
+        description: "Calendar date when the raw-to-landing pipeline processed the source JSON file."
+      - name: run_date
+        description: "Logical Airflow run date used to process the partition."
+      - name: source_file
+        description: "Raw JSON filename that produced the landing parquet record."
+      - name: dt
+        description: "Partition date derived from the Hive-style landing path."
+
+  - name: splits
+    description: "Bronze split or lap-level records loaded from landing parquet files."
+    columns:
+      - name: activity_id
+        description: "Garmin activity identifier the split belongs to."
+      - name: start_time_gmt
+        description: "Split start timestamp in GMT/UTC."
+      - name: intensity_type
+        description: "Garmin intensity classification for the split when present."
+      - name: distance
+        description: "Distance reported for the split."
+      - name: duration
+        description: "Duration reported for the split."
+      - name: average_speed
+        description: "Average speed reported for the split."
+      - name: average_hr
+        description: "Average heart rate reported for the split."
+      - name: max_hr
+        description: "Maximum heart rate reported for the split."
+      - name: message_index
+        description: "Garmin split index within the activity payload."
+      - name: ingested_at
+        description: "Timestamp when the raw-to-landing pipeline processed the source JSON file."
+      - name: ingestion_date
+        description: "Calendar date when the raw-to-landing pipeline processed the source JSON file."
+      - name: run_date
+        description: "Logical Airflow run date used to process the partition."
+      - name: source_file
+        description: "Raw JSON filename that produced the landing parquet record."
+      - name: dt
+        description: "Partition date derived from the Hive-style landing path."
+
+  - name: activity_details
+    description: "Bronze long-form activity detail metrics expanded from Garmin descriptor-based metric payloads."
+    columns:
+      - name: activity_id
+        description: "Garmin activity identifier the metric row belongs to."
+      - name: measurement_index
+        description: "Measurement position within the activity detail payload."
+      - name: metric_index
+        description: "Metric position within a single measurement."
+      - name: metric_key
+        description: "Resolved Garmin metric descriptor key."
+      - name: metric_value
+        description: "Metric value reported for the descriptor and measurement."
+      - name: unit_key
+        description: "Unit key associated with the metric descriptor when present."
+      - name: unit_factor
+        description: "Unit conversion factor associated with the metric descriptor when present."
+      - name: ingested_at
+        description: "Timestamp when the raw-to-landing pipeline processed the source JSON file."
+      - name: ingestion_date
+        description: "Calendar date when the raw-to-landing pipeline processed the source JSON file."
+      - name: run_date
+        description: "Logical Airflow run date used to process the partition."
+      - name: source_file
+        description: "Raw JSON filename that produced the landing parquet record."
+      - name: dt
+        description: "Partition date derived from the Hive-style landing path."
