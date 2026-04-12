@@ -226,3 +226,76 @@ def test_ingest_handles_empty_activity_list(monkeypatch, tmp_path):
 
     assert not list((tmp_path / "activity_details" / "dt=2026-03-01").glob("*.json"))
     assert not list((tmp_path / "splits" / "dt=2026-03-01").glob("*.json"))
+
+
+def test_ingest_by_date_range_writes_daily_partitions(monkeypatch, tmp_path):
+    activities = [
+        {"activityId": 1001, "startTimeLocal": "2026-03-01 08:00:00"},
+        {"activityId": 1002, "startTimeLocal": "2026-03-02 09:00:00"},
+        {"activityId": 1003, "startTimeLocal": "2026-03-02 18:30:00"},
+    ]
+    client = _build_mock_client(activities)
+    mock_get_client = MagicMock(return_value=client)
+    monkeypatch.setattr(ingest, "get_garmin_client", mock_get_client)
+
+    ingest.ingest_garmin_activities_by_date_range(
+        conn_id="garmin_default",
+        start_date="2026-03-01",
+        end_date="2026-03-31",
+        storage_root=str(tmp_path),
+        activities_folder="activities",
+        assets=_build_assets(overwrite=True),
+    )
+
+    mock_get_client.assert_called_once_with("garmin_default")
+    client.get_activities_by_date.assert_called_once_with(
+        startdate="2026-03-01", enddate="2026-03-31"
+    )
+    assert client.get_activity_details.call_count == 3
+    assert client.get_activity_splits.call_count == 3
+
+    march_1_raw_dir = tmp_path / "activities" / "dt=2026-03-01"
+    march_2_raw_dir = tmp_path / "activities" / "dt=2026-03-02"
+    march_1_raw_files = list(march_1_raw_dir.glob("activities_*.json"))
+    march_2_raw_files = list(march_2_raw_dir.glob("activities_*.json"))
+
+    assert len(march_1_raw_files) == 1
+    assert len(march_2_raw_files) == 1
+    assert json.loads(march_1_raw_files[0].read_text(encoding="utf-8")) == [
+        {"activityId": 1001, "startTimeLocal": "2026-03-01 08:00:00"}
+    ]
+    assert json.loads(march_2_raw_files[0].read_text(encoding="utf-8")) == [
+        {"activityId": 1002, "startTimeLocal": "2026-03-02 09:00:00"},
+        {"activityId": 1003, "startTimeLocal": "2026-03-02 18:30:00"},
+    ]
+
+    assert (
+        tmp_path / "activity_details" / "dt=2026-03-01" / "activity_details_1001.json"
+    ).exists()
+    assert (
+        tmp_path / "activity_details" / "dt=2026-03-02" / "activity_details_1002.json"
+    ).exists()
+    assert (tmp_path / "splits" / "dt=2026-03-02" / "splits_1003.json").exists()
+
+
+def test_ingest_by_date_range_falls_back_to_start_date_when_activity_date_missing(
+    monkeypatch, tmp_path
+):
+    activities = [{"activityId": 1001}]
+    client = _build_mock_client(activities)
+    monkeypatch.setattr(ingest, "get_garmin_client", MagicMock(return_value=client))
+
+    ingest.ingest_garmin_activities_by_date_range(
+        conn_id="garmin_default",
+        start_date="2026-03-01",
+        end_date="2026-03-31",
+        storage_root=str(tmp_path),
+        activities_folder="activities",
+        assets=[],
+    )
+
+    raw_dir = tmp_path / "activities" / "dt=2026-03-01"
+    raw_files = list(raw_dir.glob("activities_*.json"))
+
+    assert len(raw_files) == 1
+    assert json.loads(raw_files[0].read_text(encoding="utf-8")) == activities

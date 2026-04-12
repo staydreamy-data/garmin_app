@@ -3,6 +3,7 @@ from pathlib import Path
 from datetime import datetime
 from garminconnect import Garmin
 import json
+from collections import defaultdict
 from airflow.hooks.base import BaseHook
 
 METHOD_REGISTRY: dict[str, str] = {
@@ -34,6 +35,94 @@ def get_garmin_client(conn_id):
         return client
     except Exception as e:
         raise RuntimeError("Failed to login to Garmin Connect") from e
+
+
+def _get_activity_date(activity: dict, fallback_date: str) -> str:
+    activity_date = activity.get("startTimeLocal") or activity.get("startTimeGMT")
+    if isinstance(activity_date, str) and len(activity_date) >= 10:
+        return activity_date[:10]
+    return fallback_date
+
+
+def _write_activities_file(
+    storage_root: str,
+    activities_folder: str,
+    activity_date: str,
+    ingestion_time: str,
+    activities: list,
+):
+    """
+    Write the raw activities payload to a JSON file in the appropriate date partition.
+
+    Args:
+        storage_root: Base directory for output files.
+        activities_folder: Folder name for raw activities payloads.
+        activity_date: Date string (YYYY-MM-DD) used for partitioning.
+        ingestion_time: ISO timestamp string for when the ingestion is happening.
+        activities: List of activity dicts to write.
+
+    Returns:
+        The full path to the directory where the activities were written.
+    """
+    full_location_path = f"{storage_root}/{activities_folder}/dt={activity_date}"
+    Path(full_location_path).mkdir(parents=True, exist_ok=True)
+
+    with open(
+        f"{full_location_path}/activities_{ingestion_time}.json", "w", encoding="utf-8"
+    ) as f:
+        json.dump(activities, f, indent=4)
+
+    return full_location_path
+
+
+def _ingest_activity_assets(
+    client, storage_root: str, assets: list, activity: dict, activity_date: str
+):
+    activity_id = activity.get("activityId")
+    for asset in assets:
+        enabled = asset.get("enabled")
+        if not enabled:
+            logging.info(
+                f"Skipping {asset['key']} for activity {activity_id} as it is disabled in the config."
+            )
+            continue
+
+        method_key = asset["key"]
+        output_folder = asset["output_folder"]
+        overwrite = asset["overwrite"]
+        output_path = f"{storage_root}/{output_folder}/dt={activity_date}"
+        Path(output_path).mkdir(parents=True, exist_ok=True)
+        output_file = f"{output_path}/{method_key}_{activity_id}.json"
+
+        if not overwrite and Path(output_file).exists():
+            logging.info(
+                f"Skipping {method_key} for activity {activity_id} as output already exists and overwrite is False."
+            )
+            continue
+
+        method_name = METHOD_REGISTRY.get(method_key)
+        if not method_name:
+            logging.warning(f"No Garmin method found for key: {method_key}. Skipping.")
+            continue
+
+        method = getattr(client, method_name, None)
+        if method_name == "get_heart_rates":
+            result = method(activity_date)
+        else:
+            result = method(activity_id)
+
+        if not result:
+            logging.info(
+                f"No data returned for {method_key} of activity {activity_id}. Skipping."
+            )
+            continue
+
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=4)
+
+        logging.info(
+            f"Ingested {method_key} for activity {activity_id} and saved to {output_file}"
+        )
 
 
 def ingest_garmin_activities_by_date(
@@ -71,10 +160,13 @@ def ingest_garmin_activities_by_date(
         startdate=activity_date, enddate=activity_date
     )
 
-    with open(
-        f"{full_location_path}/activities_{ingestion_time}.json", "w", encoding="utf-8"
-    ) as f:
-        json.dump(activities, f, indent=4)
+    _write_activities_file(
+        storage_root=storage_root,
+        activities_folder=activities_folder,
+        activity_date=activity_date,
+        ingestion_time=ingestion_time,
+        activities=activities,
+    )
 
     if not activities:
         logging.info(f"No activities found for date: {activity_date}")
@@ -83,54 +175,89 @@ def ingest_garmin_activities_by_date(
     logging.info(f"Retrieved {len(activities)} activities for date: {activity_date}")
 
     for activity in activities:
-        activity_id = activity.get("activityId")
-        for asset in assets:
-            enabled = asset.get("enabled")
-            if not enabled:
-                logging.info(
-                    f"Skipping {asset['key']} for activity {activity_id} as it is disabled in the config."
-                )
-                continue
-
-            method_key = asset["key"]
-            output_folder = asset["output_folder"]
-            overwrite = asset["overwrite"]
-            output_path = f"{storage_root}/{output_folder}/dt={activity_date}"
-            Path(output_path).mkdir(parents=True, exist_ok=True)
-            output_file = f"{output_path}/{method_key}_{activity_id}.json"
-
-            if not overwrite and Path(output_file).exists():
-                logging.info(
-                    f"Skipping {method_key} for activity {activity_id} as output already exists and overwrite is False."
-                )
-                continue
-
-            method_name = METHOD_REGISTRY.get(method_key)
-            if not method_name:
-                logging.warning(
-                    f"No Garmin method found for key: {method_key}. Skipping."
-                )
-                continue
-
-            method = getattr(client, method_name, None)
-            if method_name == "get_heart_rates":
-                result = method(activity_date)
-            else:
-                result = method(activity_id)
-
-            if not result:
-                logging.info(
-                    f"No data returned for {method_key} of activity {activity_id}. Skipping."
-                )
-                continue
-
-            with open(output_file, "w", encoding="utf-8") as f:
-                json.dump(result, f, indent=4)
-
-            logging.info(
-                f"Ingested {method_key} for activity {activity_id} and saved to {output_file}"
-            )
+        _ingest_activity_assets(
+            client=client,
+            storage_root=storage_root,
+            assets=assets,
+            activity=activity,
+            activity_date=activity_date,
+        )
 
     logging.info(
         f"Finished ingesting {len(activities)} activities for date: {activity_date} at location: {full_location_path}"
+    )
+
+
+def ingest_garmin_activities_by_date_range(
+    conn_id,
+    start_date: str,
+    end_date: str,
+    storage_root: str,
+    activities_folder: str,
+    assets: list,
+):
+    """
+    Ingest Garmin activities for a date range and write them back into daily partitions.
+
+    Flow:
+        1. Login once using ``conn_id``.
+        2. Download all activities for ``start_date`` to ``end_date`` in one request.
+        3. Group activities by their actual activity date.
+        4. Save raw activities and per-activity assets under existing daily ``dt=<date>`` partitions.
+
+    Args:
+        conn_id: Airflow connection id containing Garmin credentials.
+        start_date: Start date in ``YYYY-MM-DD`` format.
+        end_date: End date in ``YYYY-MM-DD`` format.
+        storage_root: Base directory for output files.
+        activities_folder: Folder name for raw activities payloads.
+        assets: List of asset configs. Expected keys per asset:
+            ``key``, ``enabled``, ``output_folder``, ``overwrite``.
+    """
+
+    client = get_garmin_client(conn_id)
+
+    ingestion_time = datetime.now().isoformat()
+    logging.info(
+        f"Ingesting all the activities for date range: {start_date} to {end_date}"
+    )
+
+    activities = client.get_activities_by_date(startdate=start_date, enddate=end_date)
+
+    if not activities:
+        logging.info(f"No activities found for date range: {start_date} to {end_date}")
+        return
+
+    logging.info(
+        f"Retrieved {len(activities)} activities for date range: {start_date} to {end_date}"
+    )
+
+    activities_by_date: dict[str, list] = defaultdict(list)
+    for activity in activities:
+        activity_date = _get_activity_date(activity, start_date)
+        activities_by_date[activity_date].append(activity)
+
+    for activity_date, daily_activities in sorted(activities_by_date.items()):
+        full_location_path = _write_activities_file(
+            storage_root=storage_root,
+            activities_folder=activities_folder,
+            activity_date=activity_date,
+            ingestion_time=ingestion_time,
+            activities=daily_activities,
+        )
+        logging.info(
+            f"Ingesting {len(daily_activities)} activities for date: {activity_date} at location: {full_location_path}"
+        )
+
+        for activity in daily_activities:
+            _ingest_activity_assets(
+                client=client,
+                storage_root=storage_root,
+                assets=assets,
+                activity=activity,
+                activity_date=activity_date,
+            )
+
+    logging.info(
+        f"Finished ingesting {len(activities)} activities for date range: {start_date} to {end_date}"
     )

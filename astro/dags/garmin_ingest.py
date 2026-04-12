@@ -35,7 +35,7 @@ GARMIN_CONNECTION_ID = "garmin_default"
 @dag(
     start_date=datetime(2026, 1, 1),
     schedule="@daily",
-    catchup=True,
+    catchup=False,
     doc_md=__doc__,
     default_args={"retries": 0},
     tags=["garmin"],
