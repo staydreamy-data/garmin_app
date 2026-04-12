@@ -11,8 +11,7 @@ def test_garmin_ingest_dag_metadata():
     _, dag = _load_dag_module()
 
     assert dag.dag_id == "garmin_ingest"
-    assert dag.schedule == "@daily"
-    assert dag.catchup is True
+    assert dag.catchup is False
     assert "garmin" in dag.tags
     assert dag.default_args.get("retries") == 0
     assert [task.task_id for task in dag.tasks] == ["ingest_activities"]

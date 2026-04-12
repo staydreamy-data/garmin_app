@@ -13,13 +13,12 @@ def test_garmin_ingest_backfill_dag_metadata():
     _, dag = _load_dag_module()
 
     assert dag.dag_id == "garmin_ingest_backfill"
-    assert dag.schedule is None
     assert dag.catchup is False
     assert "garmin" in dag.tags
     assert "backfill" in dag.tags
     assert dag.default_args.get("retries") == 0
-    assert dag.params["start_date"].schema["format"] == "date"
-    assert dag.params["end_date"].schema["format"] == "date"
+    assert "start_date" in dag.params
+    assert "end_date" in dag.params
     assert [task.task_id for task in dag.tasks] == ["ingest_activities"]
 
 

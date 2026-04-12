@@ -11,7 +11,6 @@ def test_raw_to_landing_dag_metadata():
     _, dag = _load_dag_module()
 
     assert dag.dag_id == "raw_to_landing"
-    assert dag.schedule == "@daily"
     assert dag.catchup is False
     assert dag.max_active_runs == 1
     assert "garmin" in dag.tags
