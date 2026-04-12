@@ -4,13 +4,13 @@
 {{ 
     config(
         materialized = 'incremental',
-        unique_key = 'activity_id'
+        unique_key = ['activity_id', 'message_index']
     )
 }}
 
 select distinct *
 from read_parquet(
-  '{{ var("landing_root") }}/activities/dt=*/*.parquet',
+  '{{ var("landing_root") }}/splits/dt=*/*.parquet',
   hive_partitioning = true,
   union_by_name = true
 )

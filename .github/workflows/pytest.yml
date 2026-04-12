@@ -6,6 +6,7 @@ on:
       - "main"
     paths:
       - "**/*.py"
+      - "dbt/**"
       - "tests/**"
       - "pyproject.toml"
       - "uv.lock"
@@ -19,6 +20,8 @@ jobs:
       AIRFLOW_HOME: ${{ github.workspace }}/astro
       AIRFLOW__CORE__DAGS_FOLDER: ${{ github.workspace }}/astro/dags
       PYTHONPATH: ${{ github.workspace }}/astro
+      DBT_DUCKDB_PATH: ${{ github.workspace }}/.tmp/dbt/garmin_ci.duckdb
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,3 +60,9 @@ jobs:
           else
             echo "No changes to commit."
           fi
+
+      - name: Prepare dbt DuckDB path
+        run: mkdir -p "$(dirname "$DBT_DUCKDB_PATH")"
+
+      - name: dbt compile
+        run: uv run dbt compile --project-dir dbt --profiles-dir dbt

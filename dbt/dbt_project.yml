@@ -9,8 +9,13 @@ model-paths: ["models"]
 target-path: "target"
 clean-targets: ["target", "dbt_packages"]
 
+vars:
+  landing_root: "../astro/include/data/landing"
+
 models:
   garmin_training_log:
     +materialized: view
+    bronze:
+      +schema: bronze
     silver:
       +schema: silver
