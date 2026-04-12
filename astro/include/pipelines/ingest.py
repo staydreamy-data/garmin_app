@@ -53,7 +53,7 @@ def _write_activities_file(
 ):
     """
     Write the raw activities payload to a JSON file in the appropriate date partition.
-    
+
     Args:
         storage_root: Base directory for output files.
         activities_folder: Folder name for raw activities payloads.
