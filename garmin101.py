@@ -26,6 +26,7 @@ def main():
     stats = client.get_stats(_today)
     stats = client.get_activities_by_date((_today))
     stats = client.get_last_activity()
+    print(stats)
 
     with open("stats.json", "w", encoding="utf-8") as f:
         json.dump(stats, f, indent=4)
