@@ -20,6 +20,8 @@ Expected config fields:
 ## Output
 Raw activities and configured asset payloads are written as JSON files
 partitioned by date (`dt=<YYYY-MM-DD>`).
+
+# TODO: ingest also training goal if any
 """
 
 from airflow.sdk import dag, task

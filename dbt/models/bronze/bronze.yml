@@ -13,7 +13,7 @@ models:
       - name: activity_name
         description: "User-facing Garmin activity name."
       - name: activity_type
-        description: "Normalized Garmin activity type key, for example running or cycling."
+        description: "Normalized Garmin activity type key(cycling, running)"
       - name: distance
         description: "Total activity distance reported by Garmin."
       - name: duration

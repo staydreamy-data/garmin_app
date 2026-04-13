@@ -1,0 +1,23 @@
+version: 2
+
+models:
+  - name: running_activities
+    description: "Silver running-only activity records derived from bronze activities."
+    columns:
+      - name: activity_id
+        description: "Garmin activity identifier for a running activity."
+        tests:
+          - not_null
+          - unique
+
+  - name: running_splits
+    description: "Silver split records that belong only to modeled running activities."
+    columns:
+      - name: activity_id
+        description: "Garmin activity identifier for the parent running activity."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('running_activities')
+                field: activity_id

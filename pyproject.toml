@@ -20,3 +20,8 @@ airflow-tests = [
     "pytest>=8.0.0",
     "ruff>=0.9.0",
 ]
+
+dev = [
+    "sqlfluff",
+    "sqlfluff-templater-dbt",
+]

@@ -10,7 +10,7 @@
 
 select distinct *
 from read_parquet(
-  '{{ var("landing_root") }}/splits/dt=*/*.parquet',
+  '{{ var("landing_root") }}/activity_details/dt=*/*.parquet',
   hive_partitioning = true,
   union_by_name = true
 )
