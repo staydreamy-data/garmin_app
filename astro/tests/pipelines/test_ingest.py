@@ -197,7 +197,9 @@ def test_ingest_skips_reference_asset_when_reference_id_missing(
         )
 
     client.get_workout_by_id.assert_not_called()
-    assert "No workoutId found for activity 1001. Skipping workout asset." in caplog.text
+    assert (
+        "No workoutId found for activity 1001. Skipping workout asset." in caplog.text
+    )
     assert not (tmp_path / "workouts" / "dt=2026-03-01" / "workouts_1001.json").exists()
 
 
