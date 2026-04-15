@@ -36,7 +36,7 @@ interval_work as (
    where intensity_type not in ('WARMUP', 'COOLDOWN')
 )
 
-select * from warmup_and_cooldown_summary
+select * from interval_work
 
 -- select
 --     activity_id,
