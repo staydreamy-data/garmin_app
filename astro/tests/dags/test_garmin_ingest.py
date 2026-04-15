@@ -35,6 +35,7 @@ def test_garmin_ingest_task_calls_config_and_pipeline(monkeypatch):
                 "enabled": True,
                 "output_folder": "splits",
                 "overwrite": True,
+                "source": "activity",
             }
         ],
         "storage_root": "include/data/raw/garmin",

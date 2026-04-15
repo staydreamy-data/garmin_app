@@ -51,22 +51,41 @@ def _build_mock_client(activities):
         "type": "splits",
         "activity_id": activity_id,
     }
+    client.get_workout_by_id.side_effect = lambda workout_id: {
+        "type": "workout",
+        "workout_id": workout_id,
+    }
     return client
 
 
-def _build_assets(*, details_enabled=True, splits_enabled=True, overwrite=True):
+def _build_assets(
+    *,
+    details_enabled=True,
+    splits_enabled=True,
+    workouts_enabled=False,
+    overwrite=True,
+):
     return [
         {
             "key": "activity_details",
             "enabled": details_enabled,
             "output_folder": "activity_details",
             "overwrite": overwrite,
+            "source": "activity",
         },
         {
             "key": "splits",
             "enabled": splits_enabled,
             "output_folder": "splits",
             "overwrite": overwrite,
+            "source": "activity",
+        },
+        {
+            "key": "workouts",
+            "enabled": workouts_enabled,
+            "output_folder": "workouts",
+            "overwrite": overwrite,
+            "source": "reference",
         },
     ]
 
@@ -120,6 +139,70 @@ def test_ingest_by_date_writes_raw_and_asset_files(monkeypatch, tmp_path):
     }
 
 
+def test_ingest_fetches_reference_assets_from_activity_fields(monkeypatch, tmp_path):
+    activities = [
+        {"activityId": 1001, "workoutId": 9001},
+        {"activityId": 1002, "workoutId": 9002},
+    ]
+    client = _build_mock_client(activities)
+    monkeypatch.setattr(ingest, "get_garmin_client", MagicMock(return_value=client))
+
+    ingest.ingest_garmin_activities_by_date(
+        conn_id="garmin_default",
+        activity_date="2026-03-01",
+        storage_root=str(tmp_path),
+        activities_folder="activities",
+        assets=_build_assets(
+            details_enabled=False,
+            splits_enabled=False,
+            workouts_enabled=True,
+            overwrite=True,
+        ),
+    )
+
+    client.get_workout_by_id.assert_any_call(9001)
+    client.get_workout_by_id.assert_any_call(9002)
+    assert client.get_workout_by_id.call_count == 2
+
+    workout_1001 = tmp_path / "workouts" / "dt=2026-03-01" / "workouts_1001.json"
+    workout_1002 = tmp_path / "workouts" / "dt=2026-03-01" / "workouts_1002.json"
+
+    assert workout_1001.exists()
+    assert workout_1002.exists()
+    assert json.loads(workout_1001.read_text(encoding="utf-8")) == {
+        "type": "workout",
+        "workout_id": 9001,
+    }
+
+
+def test_ingest_skips_reference_asset_when_reference_id_missing(
+    monkeypatch, tmp_path, caplog
+):
+    activities = [{"activityId": 1001}]
+    client = _build_mock_client(activities)
+    monkeypatch.setattr(ingest, "get_garmin_client", MagicMock(return_value=client))
+
+    with caplog.at_level("INFO"):
+        ingest.ingest_garmin_activities_by_date(
+            conn_id="garmin_default",
+            activity_date="2026-03-01",
+            storage_root=str(tmp_path),
+            activities_folder="activities",
+            assets=_build_assets(
+                details_enabled=False,
+                splits_enabled=False,
+                workouts_enabled=True,
+                overwrite=True,
+            ),
+        )
+
+    client.get_workout_by_id.assert_not_called()
+    assert (
+        "No workoutId found for activity 1001. Skipping workout asset." in caplog.text
+    )
+    assert not (tmp_path / "workouts" / "dt=2026-03-01" / "workouts_1001.json").exists()
+
+
 def test_ingest_skips_disabled_assets(monkeypatch, tmp_path):
     activities = [{"activityId": 1001}]
     client = _build_mock_client(activities)
@@ -165,6 +248,7 @@ def test_ingest_respects_overwrite_false_for_existing_output(monkeypatch, tmp_pa
                 "enabled": True,
                 "output_folder": "activity_details",
                 "overwrite": False,
+                "source": "activity",
             }
         ],
     )
@@ -190,6 +274,7 @@ def test_ingest_skips_unknown_method_key(monkeypatch, tmp_path, caplog):
                     "enabled": True,
                     "output_folder": "unknown",
                     "overwrite": True,
+                    "source": "activity",
                 }
             ],
         )
