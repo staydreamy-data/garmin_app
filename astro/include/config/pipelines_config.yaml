@@ -7,10 +7,17 @@ pipelines:
         enabled: true
         output_folder: splits
         overwrite: true
+        source: activity
       - key: activity_details
         enabled: true
         output_folder: activity_details
         overwrite: true
+        source: activity
+      - key: workouts
+        enabled: true
+        output_folder: workouts
+        overwrite: true
+        source: reference
   raw_to_landing:
     source_path: include/data/raw/garmin
     landing_path: include/data/landing
@@ -75,6 +82,10 @@ pipelines:
             source: deviceId
             dtype: int64
             required: false
+          - target: workout_id
+            source: workoutId
+            dtype: int64
+            required: false
       splits:
         enabled: true
         source_folder: splits
@@ -120,6 +131,10 @@ pipelines:
             required: false
           - target: message_index
             source: messageIndex
+            dtype: int64
+            required: false
+          - target: workout_step_index
+            source: wktStepIndex
             dtype: int64
             required: false
       activity_details:

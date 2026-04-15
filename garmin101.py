@@ -23,6 +23,9 @@ def main():
     from datetime import date
 
     _today = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+
+    workout = client.get_workout_by_id(1491481113)
+    print(workout)
     stats = client.get_stats(_today)
     stats = client.get_activities_by_date((_today))
     stats = client.get_last_activity()
