@@ -4,7 +4,7 @@ class ConfigError(ValueError):
 
 def _validate_extract(asset_name: str, extract: dict):
     payload_kind = extract.get("payload_kind")
-    supported_kinds = {"list", "object", "descriptor_metrics"}
+    supported_kinds = {"list", "object", "record", "descriptor_metrics"}
     if payload_kind not in supported_kinds:
         raise ConfigError(f"{asset_name}: unsupported payload_kind '{payload_kind}'")
 

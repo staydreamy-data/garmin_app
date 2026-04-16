@@ -9,6 +9,7 @@ DTYPE_MAP = {
     "int64": pl.Int64,
     "float64": pl.Float64,
     "boolean": pl.Boolean,
+    "json": pl.Utf8,
 }
 
 

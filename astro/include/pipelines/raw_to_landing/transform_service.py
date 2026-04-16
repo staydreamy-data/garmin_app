@@ -15,6 +15,7 @@ DTYPE_MAP = {
     "int64": pl.Int64,
     "float64": pl.Float64,
     "boolean": pl.Boolean,
+    "json": pl.Utf8,
 }
 
 
@@ -37,6 +38,8 @@ def _resolve_records(raw_data: dict | list, extract_config: dict) -> list:
     kind = extract_config["payload_kind"]
     if kind == "list":
         return raw_data if isinstance(raw_data, list) else []
+    if kind == "record":
+        return [raw_data] if isinstance(raw_data, dict) else []
     if kind == "object":
         path = extract_config.get("records_path")
         if not isinstance(raw_data, dict) or not path:
@@ -138,6 +141,8 @@ def _map_raw_to_staged(records: list, columns_mapping: dict) -> list:
         for column_mapping in columns_mapping:
             target_column = column_mapping["target"]
             source_column_value = _get_nested(record, column_mapping["source"])
+            if column_mapping.get("dtype") == "json" and source_column_value is not None:
+                source_column_value = json.dumps(source_column_value)
 
             mapped_record[target_column] = source_column_value
         mapped_records.append(mapped_record)
