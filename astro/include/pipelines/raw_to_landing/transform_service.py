@@ -141,7 +141,10 @@ def _map_raw_to_staged(records: list, columns_mapping: dict) -> list:
         for column_mapping in columns_mapping:
             target_column = column_mapping["target"]
             source_column_value = _get_nested(record, column_mapping["source"])
-            if column_mapping.get("dtype") == "json" and source_column_value is not None:
+            if (
+                column_mapping.get("dtype") == "json"
+                and source_column_value is not None
+            ):
                 source_column_value = json.dumps(source_column_value)
 
             mapped_record[target_column] = source_column_value
