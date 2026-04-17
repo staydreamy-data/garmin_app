@@ -65,6 +65,10 @@ def _write_activities_file(
     Returns:
         The full path to the directory where the activities were written.
     """
+    if not activities:
+        logging.info(f"No activities to write for date: {activity_date}")
+        return
+
     full_location_path = f"{storage_root}/{activities_folder}/dt={activity_date}"
     Path(full_location_path).mkdir(parents=True, exist_ok=True)
 
