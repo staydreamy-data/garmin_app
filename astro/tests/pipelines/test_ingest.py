@@ -306,8 +306,7 @@ def test_ingest_handles_empty_activity_list(monkeypatch, tmp_path):
 
     raw_dir = tmp_path / "activities" / "dt=2026-03-01"
     raw_files = list(raw_dir.glob("activities_*.json"))
-    assert len(raw_files) == 1
-    assert json.loads(raw_files[0].read_text(encoding="utf-8")) == []
+    assert len(raw_files) == 0
 
     assert not list((tmp_path / "activity_details" / "dt=2026-03-01").glob("*.json"))
     assert not list((tmp_path / "splits" / "dt=2026-03-01").glob("*.json"))
