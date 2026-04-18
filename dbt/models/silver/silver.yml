@@ -12,6 +12,12 @@ models:
 
   - name: running_splits
     description: "Silver split records that belong only to modeled running activities."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - activity_id
+              - message_index
     columns:
       - name: activity_id
         description: "Garmin activity identifier for the parent running activity."
@@ -21,3 +27,47 @@ models:
               arguments:
                 to: ref('running_activities')
                 field: activity_id
+      - name: message_index
+        description: "Garmin split index within the parent activity payload."
+        tests:
+          - not_null
+
+  - name: running_activity_details
+    description: "Silver running-only activity detail measurements pivoted into a wide metric view."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - activity_id
+              - measurement_index
+    columns:
+      - name: activity_id
+        description: "Garmin activity identifier for the parent running activity."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('running_activities')
+                field: activity_id
+      - name: measurement_index
+        description: "Measurement position within the activity detail payload."
+        tests:
+          - not_null
+
+  - name: running_workouts
+    description: "Silver running workout steps exploded from bronze workout segment JSON."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - workout_id
+              - step_id
+    columns:
+      - name: workout_id
+        description: "Garmin workout identifier."
+        tests:
+          - not_null
+      - name: step_id
+        description: "Garmin workout step identifier."
+        tests:
+          - not_null

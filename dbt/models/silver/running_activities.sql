@@ -1,3 +1,6 @@
+{% set start_date = var("start_date", run_started_at.strftime("%Y-%m-%d")) %}
+{% set end_date = var("end_date", start_date) %}
+
 {{ 
     config(
         materialized = 'incremental',
@@ -21,3 +24,7 @@ select
     (duration / 60) / (distance / 1000) as average_pace_min_per_km
 from {{ ref('activities') }}
 where activity_type = 'running'
+{% if is_incremental() %}
+    and run_date >= date '{{ start_date }}'
+    and run_date <= date '{{ end_date }}'
+{% endif %}

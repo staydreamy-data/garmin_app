@@ -22,3 +22,8 @@ select
 from {{ ref('splits') }} as s
 inner join {{ ref('running_activities') }} as a
     on s.activity_id = a.activity_id
+
+{% if is_incremental() %}
+    and s.run_date >= date '{{ start_date }}'
+    and s.run_date <= date '{{ end_date }}'
+{% endif %}

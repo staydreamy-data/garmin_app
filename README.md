@@ -9,3 +9,4 @@ uv sync --extra airflow-tests --cache-dir .uv-cache
 deduplication for raw layer
 add flag that checks if workout makes sense, as it could be changed over time
 make silver layer incremental
+make workouts as SCD2

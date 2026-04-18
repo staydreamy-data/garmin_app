@@ -122,6 +122,10 @@ pipelines:
             source: messageIndex
             dtype: int64
             required: false
+          - target: workout_step_index
+            source: wktStepIndex
+            dtype: int64
+            required: false
       activity_details:
         enabled: true
         source_folder: activity_details
@@ -145,11 +149,3 @@ pipelines:
           - { target: metric_value, source: metric_value, dtype: float64, required: false }
           - { target: unit_key, source: unit_key, dtype: string, required: false }
           - { target: unit_factor, source: unit_factor, dtype: float64, required: false }
-      # - key: heartrate
-      #   enabled: true
-      #   output_folder: heartrate
-      #   overwrite: true
-      # - key: splits
-      #   enabled: true
-      #   output_folder: splits
-      #   overwrite: true

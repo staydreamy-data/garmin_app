@@ -80,6 +80,8 @@ models:
         description: "Raw JSON filename that produced the landing parquet record."
       - name: dt
         description: "Partition date derived from the Hive-style landing path."
+      - name: workout_step_index
+        description: "Garmin workout step index associated with the split when present."
 
   - name: activity_details
     description: "Bronze long-form activity detail metrics expanded from Garmin descriptor-based metric payloads."
