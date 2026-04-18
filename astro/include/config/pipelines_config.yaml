@@ -7,10 +7,17 @@ pipelines:
         enabled: true
         output_folder: splits
         overwrite: true
+        source: activity
       - key: activity_details
         enabled: true
         output_folder: activity_details
         overwrite: true
+        source: activity
+      - key: workouts
+        enabled: true
+        output_folder: workouts
+        overwrite: true
+        source: reference
   raw_to_landing:
     source_path: include/data/raw/garmin
     landing_path: include/data/landing
@@ -73,6 +80,10 @@ pipelines:
             required: false
           - target: device_id
             source: deviceId
+            dtype: int64
+            required: false
+          - target: workout_id
+            source: workoutId
             dtype: int64
             required: false
       splits:
@@ -149,3 +160,34 @@ pipelines:
           - { target: metric_value, source: metric_value, dtype: float64, required: false }
           - { target: unit_key, source: unit_key, dtype: string, required: false }
           - { target: unit_factor, source: unit_factor, dtype: float64, required: false }
+      workouts:
+        enabled: true
+        source_folder: workouts
+        extract:
+          payload_kind: record
+        target_table: workouts
+        column_mapping:
+          - target: workout_id
+            source: workoutId
+            dtype: int64
+            required: true
+          - target: workout_name
+            source: workoutName
+            dtype: string
+            required: true
+          - target: workout_type
+            source: sportType.sportTypeKey
+            dtype: string
+            required: true
+          - target: estimated_duration_in_secs
+            source: estimatedDurationInSecs
+            dtype: int64
+            required: true
+          - target: estimated_distance_in_meters
+            source: estimatedDistanceInMeters
+            dtype: float64
+            required: true
+          - target: workout_segments
+            source: workoutSegments
+            dtype: json
+            required: true

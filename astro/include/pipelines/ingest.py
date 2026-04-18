@@ -9,6 +9,7 @@ from airflow.hooks.base import BaseHook
 METHOD_REGISTRY: dict[str, str] = {
     "splits": "get_activity_splits",
     "activity_details": "get_activity_details",
+    "workouts": "get_workout_by_id",
 }
 
 
@@ -64,6 +65,10 @@ def _write_activities_file(
     Returns:
         The full path to the directory where the activities were written.
     """
+    if not activities:
+        logging.info(f"No activities to write for date: {activity_date}")
+        return
+
     full_location_path = f"{storage_root}/{activities_folder}/dt={activity_date}"
     Path(full_location_path).mkdir(parents=True, exist_ok=True)
 
@@ -75,7 +80,7 @@ def _write_activities_file(
     return full_location_path
 
 
-def _ingest_activity_assets(
+def _ingest_assets(
     client, storage_root: str, assets: list, activity: dict, activity_date: str
 ):
     activity_id = activity.get("activityId")
@@ -93,6 +98,7 @@ def _ingest_activity_assets(
         output_path = f"{storage_root}/{output_folder}/dt={activity_date}"
         Path(output_path).mkdir(parents=True, exist_ok=True)
         output_file = f"{output_path}/{method_key}_{activity_id}.json"
+        source = asset.get("source")
 
         if not overwrite and Path(output_file).exists():
             logging.info(
@@ -106,10 +112,22 @@ def _ingest_activity_assets(
             continue
 
         method = getattr(client, method_name, None)
-        if method_name == "get_heart_rates":
-            result = method(activity_date)
-        else:
+
+        if source == "activity":
             result = method(activity_id)
+        elif source == "reference" and method_key == "workouts":
+            workout_id = activity.get("workoutId")
+            if not workout_id:
+                logging.info(
+                    f"No workoutId found for activity {activity_id}. Skipping workout asset."
+                )
+                continue
+            result = method(workout_id)
+        else:
+            logging.warning(
+                f"Unsupported source '{source}' for asset '{method_key}'. Skipping."
+            )
+            continue
 
         if not result:
             logging.info(
@@ -175,7 +193,7 @@ def ingest_garmin_activities_by_date(
     logging.info(f"Retrieved {len(activities)} activities for date: {activity_date}")
 
     for activity in activities:
-        _ingest_activity_assets(
+        _ingest_assets(
             client=client,
             storage_root=storage_root,
             assets=assets,
@@ -250,7 +268,7 @@ def ingest_garmin_activities_by_date_range(
         )
 
         for activity in daily_activities:
-            _ingest_activity_assets(
+            _ingest_assets(
                 client=client,
                 storage_root=storage_root,
                 assets=assets,

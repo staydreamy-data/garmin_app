@@ -57,6 +57,26 @@ def _base_config(tmp_path: Path) -> dict:
                     }
                 ],
             },
+            "workouts": {
+                "enabled": True,
+                "source_folder": "workouts",
+                "extract": {"payload_kind": "record"},
+                "target_table": "workouts",
+                "column_mapping": [
+                    {
+                        "target": "workout_id",
+                        "source": "workoutId",
+                        "dtype": "int64",
+                        "required": True,
+                    },
+                    {
+                        "target": "workout_segments",
+                        "source": "workoutSegments",
+                        "dtype": "json",
+                        "required": False,
+                    },
+                ],
+            },
         },
     }
 
@@ -77,6 +97,15 @@ def test_resolve_records_for_object_payload():
     records = _resolve_records(raw_data, extract)
 
     assert records == [{"idx": 1}, {"idx": 2}]
+
+
+def test_resolve_records_for_record_payload():
+    raw_data = {"workoutId": 101, "workoutSegments": []}
+    extract = {"payload_kind": "record"}
+
+    records = _resolve_records(raw_data, extract)
+
+    assert records == [raw_data]
 
 
 def test_resolve_records_for_descriptor_metrics_payload():
@@ -167,6 +196,21 @@ def test_get_nested_and_map_raw_to_staged():
     assert _map_raw_to_staged(records, mapping) == [
         {"activity_id": 10, "activity_type": "running"},
         {"activity_id": 11, "activity_type": "cycling"},
+    ]
+
+
+def test_map_raw_to_staged_serializes_json_columns():
+    records = [{"workoutId": 10, "workoutSegments": [{"segmentOrder": 1}]}]
+    mapping = [
+        {"target": "workout_id", "source": "workoutId", "dtype": "int64"},
+        {"target": "workout_segments", "source": "workoutSegments", "dtype": "json"},
+    ]
+
+    assert _map_raw_to_staged(records, mapping) == [
+        {
+            "workout_id": 10,
+            "workout_segments": json.dumps([{"segmentOrder": 1}]),
+        }
     ]
 
 
@@ -320,3 +364,43 @@ def test_stage_asset_batch_list_payload_uses_latest_snapshot_on_rerun(tmp_path: 
         tmp_path / "landing" / "activities" / f"dt={run_date}" / "activities.parquet"
     )
     assert staged_df.select("activity_id").to_series().to_list() == [202]
+
+
+def test_stage_asset_batch_record_payload_writes_json_column(tmp_path: Path):
+    config = _base_config(tmp_path)
+    run_date = "2026-03-18"
+
+    source_dir = tmp_path / "raw" / "workouts" / f"dt={run_date}"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "workoutId": 501,
+        "workoutSegments": [
+            {
+                "segmentOrder": 1,
+                "workoutSteps": [
+                    {"stepId": 1, "stepOrder": 1},
+                    {"stepId": 2, "stepOrder": 2},
+                ],
+            }
+        ],
+    }
+    (source_dir / "workouts_501.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    result = stage_asset_batch(
+        run_date=run_date, asset_name="workouts", raw_config=config
+    )
+
+    assert result == {
+        "asset": "workouts",
+        "files_seen": 1,
+        "rows_valid": 1,
+        "rows_invalid": 0,
+        "staged_files": 1,
+    }
+
+    staged_df = pl.read_parquet(
+        tmp_path / "landing" / "workouts" / f"dt={run_date}" / "workouts.parquet"
+    )
+    assert staged_df.height == 1
+    assert staged_df.schema["workout_segments"] == pl.String
+    assert json.loads(staged_df["workout_segments"][0]) == payload["workoutSegments"]

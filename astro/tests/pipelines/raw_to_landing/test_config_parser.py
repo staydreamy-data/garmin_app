@@ -82,6 +82,29 @@ def test_parse_pipeline_config_accepts_descriptor_metrics():
     assert parse_pipeline_config(raw) is raw
 
 
+def test_parse_pipeline_config_accepts_record_payload():
+    raw = {
+        "assets": {
+            "workouts": {
+                "enabled": True,
+                "source_folder": "workouts",
+                "extract": {"payload_kind": "record"},
+                "target_table": "workouts",
+                "column_mapping": [
+                    {"target": "workout_id", "source": "workoutId", "dtype": "int64"},
+                    {
+                        "target": "workout_segments",
+                        "source": "workoutSegments",
+                        "dtype": "json",
+                    },
+                ],
+            }
+        }
+    }
+
+    assert parse_pipeline_config(raw) is raw
+
+
 def test_parse_pipeline_config_rejects_descriptor_metrics_with_missing_fields():
     raw = {
         "assets": {
