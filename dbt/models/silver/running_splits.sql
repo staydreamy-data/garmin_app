@@ -1,3 +1,10 @@
+{{ 
+    config(
+        materialized = 'incremental',
+        unique_key = ['activity_id', 'message_index']
+    )
+}}
+
 select
     s.activity_id,
     s.start_time_gmt,

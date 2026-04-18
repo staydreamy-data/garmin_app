@@ -1,3 +1,11 @@
+{{ 
+    config(
+        materialized = 'incremental',
+        unique_key = ['activity_id', 'measurement_index']
+    )
+}}
+
+
 with base as (
     select
         d.activity_id,

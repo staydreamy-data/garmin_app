@@ -4,13 +4,13 @@
 {{ 
     config(
         materialized = 'incremental',
-        unique_key = ['activity_id', 'measurement_index', 'metric_index']
+        unique_key = 'workout_id'
     )
 }}
 
 select distinct *
 from read_parquet(
-  '{{ var("landing_root") }}/activity_details/dt=*/*.parquet',
+  '{{ var("landing_root") }}/workouts/dt=*/*.parquet',
   hive_partitioning = true,
   union_by_name = true
 )
@@ -20,3 +20,4 @@ where
     and dt >= date '{{ start_date }}'
     and dt <= date '{{ end_date }}'
 {% endif %}
+qualify row_number() over (partition by workout_id order by run_date desc) = 1

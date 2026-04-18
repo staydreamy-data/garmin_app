@@ -19,3 +19,5 @@ models:
       +schema: bronze
     silver:
       +schema: silver
+    gold:
+      +schema: gold
