@@ -61,13 +61,13 @@ models:
           arguments:
             combination_of_columns:
               - workout_id
-              - step_id
+              - step_order
     columns:
       - name: workout_id
         description: "Garmin workout identifier."
         tests:
           - not_null
-      - name: step_id
-        description: "Garmin workout step identifier."
+      - name: step_order
+        description: "Garmin workout step order."
         tests:
           - not_null

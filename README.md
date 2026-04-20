@@ -10,3 +10,5 @@ deduplication for raw layer
 add flag that checks if workout makes sense, as it could be changed over time
 make silver layer incremental
 make workouts as SCD2
+add target to workout
+add seed for target types for mapping
