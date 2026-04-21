@@ -13,7 +13,7 @@ with base as (
         d.metric_key,
         d.metric_value
     from {{ ref('activity_details') }} as d
-    inner join {{ ref('running_activities') }} as a
+    inner join {{ ref('running_trainings') }} as a
         on d.activity_id = a.activity_id
     where
         d.metric_key in (
@@ -54,6 +54,6 @@ select
     summovingduration as moving_duration_sec,
     directspeed as speed_mps,
     directheartrate as heart_rate_bpm,
-    (summovingduration / 60 ) / sumdistance * 1000 as pace_min_per_km
+    {{format_pace_from_speed('directspeed')}} as split_pace
 
 from pivoted

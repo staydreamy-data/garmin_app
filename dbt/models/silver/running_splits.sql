@@ -1,7 +1,7 @@
 {{ 
     config(
         materialized = 'incremental',
-        unique_key = ['activity_id', 'message_index']
+        unique_key = ['activity_id', 'split_index']
     )
 }}
 
@@ -13,16 +13,14 @@ select
     s.duration as duration_sec,
     s.average_speed as average_speed_ms,
     s.average_hr,
-    s.message_index,
+    s.message_index as split_index,
     a.workout_id,
     s.workout_step_index,
     s.run_date,
-    (s.distance / 1000) as distance_km,
-    (s.duration / 60) as duration_min,
-    (s.duration / 60) / (s.distance / 1000) as average_pace_min_per_km,
-    (a.device_id is not null) as include_hr
+    {{format_pace_from_speed('s.average_speed')}} as split_pace,
+    a.include_hr
 from {{ ref('splits') }} as s
-inner join {{ ref('running_activities') }} as a
+inner join {{ ref('running_trainings') }} as a
     on s.activity_id = a.activity_id
 
 {% if is_incremental() %}

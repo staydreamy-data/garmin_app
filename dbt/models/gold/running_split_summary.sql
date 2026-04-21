@@ -26,12 +26,12 @@ interval_work as (
     select
         activity_id,
         intensity_type,
-        duration_min,
-        distance_km,
-        {{ format_pace_min_per_km('average_pace_min_per_km') }} as pace_min_per_km,
+        duration_sec,
+        distance_m,
+        split_pace,
         average_hr,
-        message_index,
-        row_number() over (partition by activity_id, intensity_type order by message_index) as interval_number
+        split_index,
+        row_number() over (partition by activity_id, intensity_type order by split_index) as interval_number
     from {{ ref('running_splits') }}
    where intensity_type not in ('WARMUP', 'COOLDOWN')
 )

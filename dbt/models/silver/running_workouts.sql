@@ -135,7 +135,6 @@ select
 workout_id,
 workout_name,
 step_order,
-step_dto_type,
 step_type,
 target_goal,
 target_distance_m,

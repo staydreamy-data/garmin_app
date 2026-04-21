@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: running_activities
+  - name: running_trainings
     description: "Silver running-only activity records derived from bronze activities."
     columns:
       - name: activity_id
@@ -17,7 +17,7 @@ models:
           arguments:
             combination_of_columns:
               - activity_id
-              - message_index
+              - split_index
     columns:
       - name: activity_id
         description: "Garmin activity identifier for the parent running activity."
@@ -25,15 +25,15 @@ models:
           - not_null
           - relationships:
               arguments:
-                to: ref('running_activities')
+                to: ref('running_trainings')
                 field: activity_id
-      - name: message_index
+      - name: split_index
         description: "Garmin split index within the parent activity payload."
         tests:
           - not_null
 
-  - name: running_activity_details
-    description: "Silver running-only activity detail measurements pivoted into a wide metric view."
+  - name: running_derived_splits
+    description: "Silver running split-like measurements derived from activity detail metrics."
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -47,7 +47,7 @@ models:
           - not_null
           - relationships:
               arguments:
-                to: ref('running_activities')
+                to: ref('running_trainings')
                 field: activity_id
       - name: measurement_index
         description: "Measurement position within the activity detail payload."

@@ -20,9 +20,8 @@ select
     device_id,
     workout_id,
     run_date,
-    (duration / 60) as duration_min,
-    (distance / 1000) as distance_km,
-    (duration / 60) / (distance / 1000) as average_pace_min_per_km
+    {{format_pace_from_speed('average_speed')}} as training_pace,
+    (device_id is not null) as include_hr
 from {{ ref('activities') }}
 where activity_type = 'running'
 {% if is_incremental() %}
