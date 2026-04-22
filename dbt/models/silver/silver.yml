@@ -39,7 +39,7 @@ models:
           arguments:
             combination_of_columns:
               - activity_id
-              - measurement_index
+              - distance_km_bucket
     columns:
       - name: activity_id
         description: "Garmin activity identifier for the parent running activity."
@@ -49,8 +49,8 @@ models:
               arguments:
                 to: ref('running_trainings')
                 field: activity_id
-      - name: measurement_index
-        description: "Measurement position within the activity detail payload."
+      - name: distance_km_bucket
+        description: "Distance bucket in kilometers used to group activity detail measurements into split-like records."
         tests:
           - not_null
 

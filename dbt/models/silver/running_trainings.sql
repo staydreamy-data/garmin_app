@@ -11,7 +11,6 @@
 select
     activity_id,
     start_time_gmt,
-    distance,
     distance as distance_m,
     duration as duration_sec,
     average_speed as average_speed_ms,

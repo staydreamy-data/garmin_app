@@ -1,45 +1,45 @@
-with grouped_warmup_and_cooldown as (
-    select
-        activity_id,
-        intensity_type,
-        sum(duration_min) as duration_min,
-        sum(distance_km) as distance_km,
-        {{ format_pace_min_per_km('avg(average_pace_min_per_km)') }} as pace_min_per_km,
-        avg(average_hr) as average_hr,
-        max(include_hr) as include_hr,
-        max(message_index) as message_index
-    from {{ ref('running_splits') }}
-    where intensity_type in ('WARMUP', 'COOLDOWN')
-    group by activity_id, intensity_type
-),
-warmup_and_cooldown_summary as (
-    select 
-        activity_id,
-        case when intensity_type = 'WARMUP' then {{ get_interval_summary('Warmup', 'distance_km', 'pace_min_per_km', 'average_hr', 'include_hr') }}
-             when intensity_type = 'COOLDOWN' then {{ get_interval_summary('Cooldown', 'distance_km', 'pace_min_per_km', 'average_hr', 'include_hr') }}
-             else null end as summary,
-        message_index
-    from grouped_warmup_and_cooldown
-),
+-- with grouped_warmup_and_cooldown as (
+--     select
+--         activity_id,
+--         intensity_type,
+--         sum(duration_min) as duration_min,
+--         sum(distance_km) as distance_km,
+--         {{ format_pace_min_per_km('avg(average_pace_min_per_km)') }} as pace_min_per_km,
+--         avg(average_hr) as average_hr,
+--         max(include_hr) as include_hr,
+--         max(message_index) as message_index
+--     from {{ ref('running_splits') }}
+--     where intensity_type in ('WARMUP', 'COOLDOWN')
+--     group by activity_id, intensity_type
+-- ),
+-- warmup_and_cooldown_summary as (
+--     select 
+--         activity_id,
+--         case when intensity_type = 'WARMUP' then {{ get_interval_summary('Warmup', 'distance_km', 'pace_min_per_km', 'average_hr', 'include_hr') }}
+--              when intensity_type = 'COOLDOWN' then {{ get_interval_summary('Cooldown', 'distance_km', 'pace_min_per_km', 'average_hr', 'include_hr') }}
+--              else null end as summary,
+--         message_index
+--     from grouped_warmup_and_cooldown
+-- ),
 
-interval_work as (
-    select
-        activity_id,
-        intensity_type,
-        duration_sec,
-        distance_m,
-        split_pace,
-        average_hr,
-        split_index,
-        row_number() over (partition by activity_id, intensity_type order by split_index) as interval_number
-    from {{ ref('running_splits') }}
-   where intensity_type not in ('WARMUP', 'COOLDOWN')
-)
+-- interval_work as (
+--     select
+--         activity_id,
+--         intensity_type,
+--         duration_sec,
+--         distance_m,
+--         split_pace,
+--         average_hr,
+--         split_index,
+--         row_number() over (partition by activity_id, intensity_type order by split_index) as interval_number
+--     from {{ ref('running_splits') }}
+--    where intensity_type not in ('WARMUP', 'COOLDOWN')
+-- )
 
-select * from interval_work
+-- select * from interval_work
 
--- select
---     activity_id,
---     intensity_type
+-- -- select
+-- --     activity_id,
+-- --     intensity_type
 
--- from {{ ref('running_splits') }}
+-- -- from {{ ref('running_splits') }}
