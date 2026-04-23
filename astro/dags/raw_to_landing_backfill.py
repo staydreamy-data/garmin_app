@@ -115,9 +115,13 @@ def raw_to_landing_backfill():
         return sorted(existing_dates)
 
     @task
-    def process_run_date(run_date: str, asset_names: list[str], config: dict) -> list[dict]:
+    def process_run_date(
+        run_date: str, asset_names: list[str], config: dict
+    ) -> list[dict]:
         return [
-            stage_asset_batch(run_date=run_date, asset_name=asset_name, raw_config=config)
+            stage_asset_batch(
+                run_date=run_date, asset_name=asset_name, raw_config=config
+            )
             for asset_name in asset_names
         ]
 
