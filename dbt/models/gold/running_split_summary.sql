@@ -1,45 +1,42 @@
--- with grouped_warmup_and_cooldown as (
---     select
---         activity_id,
---         intensity_type,
---         sum(duration_min) as duration_min,
---         sum(distance_km) as distance_km,
---         {{ format_pace_min_per_km('avg(average_pace_min_per_km)') }} as pace_min_per_km,
---         avg(average_hr) as average_hr,
---         max(include_hr) as include_hr,
---         max(message_index) as message_index
---     from {{ ref('running_splits') }}
---     where intensity_type in ('WARMUP', 'COOLDOWN')
---     group by activity_id, intensity_type
--- ),
--- warmup_and_cooldown_summary as (
---     select 
---         activity_id,
---         case when intensity_type = 'WARMUP' then {{ get_interval_summary('Warmup', 'distance_km', 'pace_min_per_km', 'average_hr', 'include_hr') }}
---              when intensity_type = 'COOLDOWN' then {{ get_interval_summary('Cooldown', 'distance_km', 'pace_min_per_km', 'average_hr', 'include_hr') }}
---              else null end as summary,
---         message_index
---     from grouped_warmup_and_cooldown
--- ),
+{{ 
+    config(
+        materialized = 'incremental',
+        unique_key = 'activity_id'
+    )
+}}
 
--- interval_work as (
---     select
---         activity_id,
---         intensity_type,
---         duration_sec,
---         distance_m,
---         split_pace,
---         average_hr,
---         split_index,
---         row_number() over (partition by activity_id, intensity_type order by split_index) as interval_number
---     from {{ ref('running_splits') }}
---    where intensity_type not in ('WARMUP', 'COOLDOWN')
--- )
+with base_derived_splits as (
+    select
+        activity_id,
+        distance_km_bucket,
+        concat(
+            cast(distance_km_bucket as varchar), ' km: ', cast(split_pace as varchar),
+            ' pace, ', cast(split_duration_min as varchar), ' duration.'
+        ) as split_summary
+    from {{ ref('running_derived_splits') }}
+    where 1 = 1
+    {% if is_incremental() %}
+        and run_date >= date '{{ start_date }}'
+        and run_date <= date '{{ end_date }}'
+    {% endif %}
+),
 
--- select * from interval_work
+derived_splits_summary as (
+select
+    activity_id,
+    string_agg(split_summary, chr(10) order by distance_km_bucket) as full_summary
+from base_derived_splits
+group by activity_id)
 
--- -- select
--- --     activity_id,
--- --     intensity_type
-
--- -- from {{ ref('running_splits') }}
+select tr.activity_id, tr.run_date, 
+concat('Total distance: ', cast(distance_km as varchar), ' km, time: ', cast(duration_min as varchar)
+) as training_summary,
+ds.full_summary from 
+{{ ref('running_trainings') }} tr
+inner join derived_splits_summary ds
+on tr.activity_id = ds.activity_id
+where tr.workout_id is null
+    {% if is_incremental() %}
+        and tr.run_date >= date '{{ start_date }}'
+        and tr.run_date <= date '{{ end_date }}'
+    {% endif %}

@@ -8,7 +8,7 @@
 select
     s.activity_id,
     s.start_time_gmt,
-    s.intensity_type,
+    lower(s.intensity_type) as step_type,
     s.distance as distance_m,
     s.duration as duration_sec,
     s.average_speed as average_speed_ms,
