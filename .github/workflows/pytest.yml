@@ -64,5 +64,8 @@ jobs:
       - name: Prepare dbt DuckDB path
         run: mkdir -p "$(dirname "$DBT_DUCKDB_PATH")"
 
+      - name: dbt deps
+        run: uv run dbt deps --project-dir dbt --profiles-dir dbt
+
       - name: dbt compile
         run: uv run dbt compile --project-dir dbt --profiles-dir dbt
