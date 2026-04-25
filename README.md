@@ -12,3 +12,5 @@ make silver layer incremental
 make workouts as SCD2
 add target to workout
 add seed for target types for mapping
+make the model better for include_hr
+
