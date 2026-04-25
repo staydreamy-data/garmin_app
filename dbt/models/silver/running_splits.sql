@@ -17,13 +17,14 @@ select
     a.workout_id,
     s.workout_step_index,
     s.run_date,
-    {{format_pace_from_speed('s.average_speed')}} as split_pace,
+    {{ format_pace_from_speed('s.average_speed') }} as split_pace,
     a.include_hr
 from {{ ref('splits') }} as s
 inner join {{ ref('running_trainings') }} as a
-    on s.activity_id = a.activity_id
+    on
+        s.activity_id = a.activity_id
 
-{% if is_incremental() %}
-    and s.run_date >= date '{{ start_date }}'
-    and s.run_date <= date '{{ end_date }}'
-{% endif %}
+        {% if is_incremental() %}
+            and s.run_date >= date '{{ start_date }}'
+            and s.run_date <= date '{{ end_date }}'
+        {% endif %}

@@ -31,10 +31,10 @@ with base as (
             'directHeartRate'
         )
 
-    {% if is_incremental() %}
-        and d.run_date >= date '{{ start_date }}'
-        and d.run_date <= date '{{ end_date }}'
-    {% endif %}
+        {% if is_incremental() %}
+            and d.run_date >= date '{{ start_date }}'
+            and d.run_date <= date '{{ end_date }}'
+        {% endif %}
 ),
 
 pivoted as (

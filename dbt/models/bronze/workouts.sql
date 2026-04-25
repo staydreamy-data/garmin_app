@@ -9,15 +9,16 @@
 }}
 
 select distinct *
-from read_parquet(
-  '{{ var("landing_root") }}/workouts/dt=*/*.parquet',
-  hive_partitioning = true,
-  union_by_name = true
-)
+from
+    read_parquet(
+        '{{ var("landing_root") }}/workouts/dt=*/*.parquet',
+        hive_partitioning = true,
+        union_by_name = true
+    )
 where
-1 = 1 
-{% if is_incremental() %}
-    and dt >= date '{{ start_date }}'
-    and dt <= date '{{ end_date }}'
-{% endif %}
+    1 = 1
+    {% if is_incremental() %}
+        and dt >= date '{{ start_date }}'
+        and dt <= date '{{ end_date }}'
+    {% endif %}
 qualify row_number() over (partition by workout_id order by run_date desc) = 1

@@ -14,18 +14,19 @@ select
     distance as distance_m,
     round(distance / 1000, 2) as distance_km,
     duration as duration_sec,
-    {{format_duration_from_seconds('duration')}} as duration_min,
+    {{ format_duration_from_seconds('duration') }} as duration_min,
     average_speed as average_speed_ms,
     average_hr,
     has_splits,
     device_id,
     workout_id,
     run_date,
-    {{format_pace_from_speed('average_speed')}} as training_pace,
+    {{ format_pace_from_speed('average_speed') }} as training_pace,
     (device_id is not null) as include_hr
 from {{ ref('activities') }}
-where activity_type = 'running'
-{% if is_incremental() %}
-    and run_date >= date '{{ start_date }}'
-    and run_date <= date '{{ end_date }}'
-{% endif %}
+where
+    activity_type = 'running'
+    {% if is_incremental() %}
+        and run_date >= date '{{ start_date }}'
+        and run_date <= date '{{ end_date }}'
+    {% endif %}
