@@ -9,7 +9,7 @@ with base_derived_splits as (
     select
         activity_id,
         distance_km_bucket,
-        concat(
+        concat( 
             cast(distance_km_bucket as varchar),
             ' km: ',
             cast(split_pace as varchar),
