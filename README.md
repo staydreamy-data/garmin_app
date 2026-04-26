@@ -14,3 +14,4 @@ add target to workout
 add seed for target types for mapping
 make the model better for include_hr
 
+22102825460 - bug in summary

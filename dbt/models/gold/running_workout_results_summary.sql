@@ -1,3 +1,8 @@
+{% set start_date = var("start_date", run_started_at.strftime("%Y-%m-%d")) %}
+{% set end_date = var("end_date", start_date) %}
+
+
+
 {{ 
     config(
         materialized = 'incremental',
@@ -109,10 +114,10 @@ workout_step_summary as (
         target_distance_km,
         target_pace_lower_range, target_pace_upper_range
 
-)
+),
 
-
-select
+workout_full_summary as 
+(select
     activity_id,
     workout_id,
     run_date,
@@ -120,6 +125,18 @@ select
         concat(target_summary, interval_summary),
 
         chr(10) || chr(10) order by workout_step_index
-    ) as activity_summary
+    ) as full_summary
 from workout_step_summary
 group by activity_id, workout_id, run_date
+)
+
+select
+    tr.activity_id,
+    tr.run_date,
+    fs.full_summary,
+    tr.training_summary
+from workout_full_summary as fs
+inner join {{ ref('running_trainings_summary') }} as tr
+    on tr.activity_id = fs.activity_id
+where
+    tr.workout_id is not null

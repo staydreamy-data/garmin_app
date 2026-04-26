@@ -1,3 +1,7 @@
+{% set start_date = var("start_date", run_started_at.strftime("%Y-%m-%d")) %}
+{% set end_date = var("end_date", start_date) %}
+
+
 {{ 
     config(
         materialized = 'incremental',
