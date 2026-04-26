@@ -1,7 +1,3 @@
-{% set start_date = var("start_date", run_started_at.strftime("%Y-%m-%d")) %}
-{% set end_date = var("end_date", start_date) %}
-
-
 {{ 
     config(
         materialized = 'incremental',
@@ -32,8 +28,12 @@ with base as (
         )
 
         {% if is_incremental() %}
-            and d.run_date >= date '{{ start_date }}'
-            and d.run_date <= date '{{ end_date }}'
+
+            and d.run_date
+            >= (
+                select max(run_date) - interval '{{ var("lookback_days") }} day'
+                from {{ this }}
+            )
         {% endif %}
 ),
 

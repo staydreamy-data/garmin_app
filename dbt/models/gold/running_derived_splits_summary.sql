@@ -1,8 +1,3 @@
-{% set start_date = var("start_date", run_started_at.strftime("%Y-%m-%d")) %}
-{% set end_date = var("end_date", start_date) %}
-
-
-
 {{ 
     config(
         materialized = 'incremental',
@@ -14,7 +9,7 @@ with base_derived_splits as (
     select
         activity_id,
         distance_km_bucket,
-        concat( 
+        concat(
             cast(distance_km_bucket as varchar),
             ' km: ',
             cast(split_pace as varchar),
@@ -24,8 +19,11 @@ with base_derived_splits as (
     where
         1 = 1
         {% if is_incremental() %}
-            and run_date >= date '{{ start_date }}'
-            and run_date <= date '{{ end_date }}'
+            and run_date
+            >= (
+                select max(run_date) - interval '{{ var("lookback_days") }} day'
+                from {{ this }}
+            )
         {% endif %}
 ),
 
@@ -45,6 +43,6 @@ select
     tr.training_summary
 from derived_splits_summary as ds
 inner join {{ ref('running_trainings_summary') }} as tr
-    on tr.activity_id = ds.activity_id
+    on ds.activity_id = tr.activity_id
 where
     tr.workout_id is null

@@ -1,6 +1,3 @@
-{% set start_date = var("start_date", run_started_at.strftime("%Y-%m-%d")) %}
-{% set end_date = var("end_date", start_date) %}
-
 {{ 
     config(
         materialized = 'incremental',
@@ -18,7 +15,10 @@ from
 where
     1 = 1
     {% if is_incremental() %}
-        and dt >= date '{{ start_date }}'
-        and dt <= date '{{ end_date }}'
+        and dt
+        >= (
+            select max(dt) - interval '{{ var("lookback_days") }} day'
+            from {{ this }}
+        )
     {% endif %}
 qualify row_number() over (partition by workout_id order by run_date desc) = 1

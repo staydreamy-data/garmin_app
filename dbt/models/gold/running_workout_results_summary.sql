@@ -1,8 +1,3 @@
-{% set start_date = var("start_date", run_started_at.strftime("%Y-%m-%d")) %}
-{% set end_date = var("end_date", start_date) %}
-
-
-
 {{ 
     config(
         materialized = 'incremental',
@@ -47,8 +42,11 @@ with workout_split_summary as (
     where
         1 = 1
         {% if is_incremental() %}
-            and run_date >= date '{{ start_date }}'
-            and run_date <= date '{{ end_date }}'
+            and run_date
+            >= (
+                select max(run_date) - interval '{{ var("lookback_days") }} day'
+                from {{ this }}
+            )
         {% endif %}
 ),
 
@@ -116,18 +114,18 @@ workout_step_summary as (
 
 ),
 
-workout_full_summary as 
-(select
-    activity_id,
-    workout_id,
-    run_date,
-    string_agg(
-        concat(target_summary, interval_summary),
+workout_full_summary as (
+    select
+        activity_id,
+        workout_id,
+        run_date,
+        string_agg(
+            concat(target_summary, interval_summary),
 
-        chr(10) || chr(10) order by workout_step_index
-    ) as full_summary
-from workout_step_summary
-group by activity_id, workout_id, run_date
+            chr(10) || chr(10) order by workout_step_index
+        ) as full_summary
+    from workout_step_summary
+    group by activity_id, workout_id, run_date
 )
 
 select
@@ -137,6 +135,6 @@ select
     tr.training_summary
 from workout_full_summary as fs
 inner join {{ ref('running_trainings_summary') }} as tr
-    on tr.activity_id = fs.activity_id
+    on fs.activity_id = tr.activity_id
 where
     tr.workout_id is not null

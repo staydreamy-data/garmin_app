@@ -1,7 +1,3 @@
-{% set start_date = var("start_date", run_started_at.strftime("%Y-%m-%d")) %}
-{% set end_date = var("end_date", start_date) %}
-
-
 {{ 
     config(
         materialized = 'incremental',
@@ -29,6 +25,9 @@ inner join {{ ref('running_trainings') }} as a
         s.activity_id = a.activity_id
 
         {% if is_incremental() %}
-            and s.run_date >= date '{{ start_date }}'
-            and s.run_date <= date '{{ end_date }}'
+            and s.run_date
+            >= (
+                select max(run_date) - interval '{{ var("lookback_days") }} day'
+                from {{ this }}
+            )
         {% endif %}
