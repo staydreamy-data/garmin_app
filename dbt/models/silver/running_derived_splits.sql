@@ -10,7 +10,7 @@ select
 *,
 cast(ceil(distance_m / 1000) as integer) as distance_km_bucket
 from {{ ref('running_activity_details') }}
-where distance_m > 0
+where distance_m > 0 and speed_mps > 0
     {% if is_incremental() %}
         and d.run_date >= date '{{ start_date }}'
         and d.run_date <= date '{{ end_date }}'
@@ -45,8 +45,8 @@ bucket_last_values as (
     select
         e.activity_id,
         e.distance_km_bucket,
-        e.duration_sec
-            - coalesce(lag(e.duration_sec) over (
+        e.moving_duration_sec
+            - coalesce(lag(e.moving_duration_sec) over (
                 partition by e.activity_id
                 order by e.distance_km_bucket
               ), 0) as split_duration_sec
