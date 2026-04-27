@@ -5,14 +5,15 @@
     )
 }}
 
+
 with base as (
 select 
 *,
 cast(ceil(distance_m / 1000) as integer) as distance_km_bucket
-from {{ ref('running_activity_details') }}
+from {{ ref('running_activity_details') }} as d
 where distance_m > 0 and speed_mps > 0
     {% if is_incremental() %}
-        and d.run_date >= (select max(run_date) - interval '{{ var("lookback_days") }} day' from {{this}})
+        and d.run_date >= (select max(run_date) - interval '{{ var("lookback_days") }} day' as max_date from {{this}})
     {% endif %}
 ),
 

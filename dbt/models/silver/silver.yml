@@ -54,6 +54,28 @@ models:
         tests:
           - not_null
 
+  - name: running_activity_details
+    description: "Silver running activity detail measurements pivoted from bronze metric rows."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - activity_id
+              - measurement_index
+    columns:
+      - name: activity_id
+        description: "Garmin activity identifier for the parent running activity."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('running_trainings')
+                field: activity_id
+      - name: measurement_index
+        description: "Measurement position within the running activity detail payload."
+        tests:
+          - not_null
+
   - name: running_workouts
     description: "Silver running workout steps exploded from bronze workout segment JSON."
     tests:
@@ -69,5 +91,27 @@ models:
           - not_null
       - name: step_order
         description: "Garmin workout step order."
+        tests:
+          - not_null
+
+  - name: running_workout_results
+    description: "Silver running workout results that align executed splits to planned workout steps."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - activity_id
+              - split_index
+    columns:
+      - name: activity_id
+        description: "Garmin activity identifier for the executed running workout."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('running_trainings')
+                field: activity_id
+      - name: split_index
+        description: "Split index within the executed running workout."
         tests:
           - not_null

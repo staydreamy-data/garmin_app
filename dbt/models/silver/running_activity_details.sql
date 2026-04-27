@@ -12,7 +12,7 @@ with base as (
         d.measurement_index,
         d.metric_key,
         d.metric_value,
-        d.run_date
+        d.run_date::DATE as run_date
     from {{ ref('activity_details') }} as d
     inner join {{ ref('running_trainings') }} as a
         on d.activity_id = a.activity_id
@@ -29,8 +29,7 @@ with base as (
 
         {% if is_incremental() %}
 
-            and d.run_date
-            >= (
+            and d.run_date::DATE >= (
                 select max(run_date) - interval '{{ var("lookback_days") }} day'
                 from {{ this }}
             )

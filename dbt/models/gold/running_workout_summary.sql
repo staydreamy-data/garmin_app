@@ -12,11 +12,12 @@ repeat_rows as (
         w.step_order as repeat_step_order,
         w.number_of_iterations,
         min(n.step_order) as next_repeat_step_order
-    from workouts w
-    left join workouts n
-        on n.workout_id = w.workout_id
-       and n.step_type = 'repeat'
-       and n.step_order > w.step_order
+    from workouts as w
+    left join workouts as n
+        on
+            w.workout_id = n.workout_id
+            and n.step_type = 'repeat'
+            and w.step_order < n.step_order
     where w.step_type = 'repeat'
     group by 1, 2, 3, 4
 ),
@@ -31,66 +32,110 @@ repeat_blocks as (
         r.repeat_step_order,
         r.number_of_iterations,
 
-        max(case when s.step_type = 'interval' then s.target_distance_m end) as interval_distance_m,
-        max(case when s.step_type = 'interval' then s.target_time_sec end) as interval_time_sec,
-        max(case when s.step_type = 'interval' then s.target_pace_lower_range end) as interval_pace_lower_range,
-        max(case when s.step_type = 'interval' then s.target_pace_upper_range end) as interval_pace_upper_range,
+        max(case when s.step_type = 'interval' then s.target_distance_m end)
+            as interval_distance_m,
+        max(case when s.step_type = 'interval' then s.target_time_sec end)
+            as interval_time_sec,
+        max(
+            case
+                when s.step_type = 'interval' then s.target_pace_lower_range
+            end
+        ) as interval_pace_lower_range,
+        max(
+            case
+                when s.step_type = 'interval' then s.target_pace_upper_range
+            end
+        ) as interval_pace_upper_range,
 
-        max(case when s.step_type = 'recovery' then s.target_distance_m end) as recovery_distance_m,
-        max(case when s.step_type = 'recovery' then s.target_time_sec end) as recovery_time_sec
-    from repeat_rows r
-    left join workouts s
-        on s.workout_id = r.workout_id
-       and s.step_order > r.repeat_step_order
-       and (
-            r.next_repeat_step_order is null
-            or s.step_order < r.next_repeat_step_order
-       )
-       and s.step_type in ('interval', 'recovery')
+        max(case when s.step_type = 'recovery' then s.target_distance_m end)
+            as recovery_distance_m,
+        max(case when s.step_type = 'recovery' then s.target_time_sec end)
+            as recovery_time_sec
+    from repeat_rows as r
+    left join workouts as s
+        on
+            r.workout_id = s.workout_id
+            and r.repeat_step_order < s.step_order
+            and (
+                r.next_repeat_step_order is null
+                or r.next_repeat_step_order > s.step_order
+            )
+            and s.step_type in ('interval', 'recovery')
     group by 1, 2, 3, 4
+),
+
+--interval_time_sec
+-- Build a readable description for each repeat block.
+repeat_block_summary as (
+    select
+        workout_id,
+        workout_name,
+        repeat_step_order,
+        number_of_iterations,
+        interval_distance_m,
+        recovery_distance_m,
+        interval_pace_lower_range,
+        interval_pace_upper_range,
+        concat(
+            cast(number_of_iterations as varchar),
+            ' x ',
+            case
+                when interval_distance_m is not null
+                    then
+                        concat(
+                            cast(
+                                cast(interval_distance_m as integer) as varchar
+                            ),
+                            'm'
+                        )
+                when interval_time_sec is not null
+                    then
+                        concat(
+                            cast(cast(interval_time_sec as integer) as varchar),
+                            'sec'
+                        )
+                else '!ERROR!'
+            end,
+            case
+                when recovery_distance_m is not null
+                    then
+                        concat(
+                            ' with ',
+                            cast(
+                                cast(recovery_distance_m as integer) as varchar
+                            ),
+                            'm recovery'
+                        )
+                when recovery_time_sec is not null
+                    then
+                        concat(
+                            ' with ',
+                            cast(cast(recovery_time_sec as integer) as varchar),
+                            's recovery'
+                        )
+                else ''
+            end,
+            case
+                when
+                    interval_pace_lower_range is not null
+                    and interval_pace_upper_range is not null
+                    then
+                        concat(
+                            ' @ ',
+                            interval_pace_lower_range,
+                            '-',
+                            interval_pace_upper_range
+                        )
+                else ''
+            end
+        ) as repeat_description
+    from repeat_blocks
 )
 
--- Build a readable description for each repeat block.
 select
     workout_id,
     workout_name,
-    repeat_step_order,
-    number_of_iterations,
-    interval_distance_m,
-    recovery_distance_m,
-    interval_pace_lower_range,
-    interval_pace_upper_range,
-    concat(
-        cast(number_of_iterations as varchar),
-        ' x ',
-        cast(cast(interval_distance_m as integer) as varchar),
-        'm',
-        case
-            when recovery_distance_m is not null then
-                concat(
-                    ' with ',
-                    cast(cast(recovery_distance_m as integer) as varchar),
-                    'm recovery'
-                )
-            when recovery_time_sec is not null then
-                concat(
-                    ' with ',
-                    cast(cast(recovery_time_sec as integer) as varchar),
-                    's recovery'
-                )
-            else ''
-        end,
-        case
-            when interval_pace_lower_range is not null
-             and interval_pace_upper_range is not null then
-                concat(
-                    ' @ ',
-                    interval_pace_lower_range,
-                    '-',
-                    interval_pace_upper_range
-                )
-            else ''
-        end
-    ) as repeat_description
-from repeat_blocks
-order by workout_id, repeat_step_order
+    string_agg(repeat_description, chr(10) order by repeat_step_order)
+        as workout_summary
+from repeat_block_summary
+group by workout_id, workout_name

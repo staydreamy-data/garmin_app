@@ -17,15 +17,14 @@ select
     has_splits,
     device_id,
     workout_id,
-    run_date,
+    run_date::DATE as run_date,
     {{ format_pace_from_speed('average_speed') }} as training_pace,
     (device_id is not null) as include_hr
 from {{ ref('activities') }}
 where
     activity_type = 'running'
     {% if is_incremental() %}
-        and run_date
-        >= (
+        and run_date::DATE >= (
             select max(run_date) - interval '{{ var("lookback_days") }} day'
             from {{ this }}
         )
