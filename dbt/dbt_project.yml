@@ -11,6 +11,7 @@ clean-targets: ["target", "dbt_packages"]
 
 vars:
   landing_root: "../astro/include/data/landing"
+  lookback_days: 0
 
 models:
   garmin_training_log:
@@ -19,3 +20,5 @@ models:
       +schema: bronze
     silver:
       +schema: silver
+    gold:
+      +schema: gold

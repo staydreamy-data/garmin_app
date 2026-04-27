@@ -1,0 +1,47 @@
+version: 2
+
+models:
+  - name: running_trainings_summary
+    description: "Gold summary row for each running training."
+    columns:
+      - name: activity_id
+        description: "Garmin activity identifier for the summarized running training."
+        tests:
+          - not_null
+          - unique
+
+  - name: running_derived_splits_summary
+    description: "Gold summary row for each non-workout running training derived from split-like buckets."
+    columns:
+      - name: activity_id
+        description: "Garmin activity identifier for the summarized non-workout running training."
+        tests:
+          - not_null
+          - unique
+
+  - name: running_workout_results_summary
+    description: "Gold summary row for each structured running workout result."
+    columns:
+      - name: activity_id
+        description: "Garmin activity identifier for the summarized running workout result."
+        tests:
+          - not_null
+          - unique
+
+  - name: running_summary
+    description: "Gold unified summary row for each running activity."
+    columns:
+      - name: activity_id
+        description: "Garmin activity identifier for the unified running summary."
+        tests:
+          - not_null
+          - unique
+
+  - name: running_workout_summary
+    description: "Gold planned workout description row for each running workout."
+    columns:
+      - name: workout_id
+        description: "Garmin workout identifier for the summarized workout description."
+        tests:
+          - not_null
+          - unique
