@@ -30,7 +30,7 @@ with base as (
         {% if is_incremental() %}
 
             and d.run_date::DATE >= (
-                select max(run_date) - interval '{{ var("lookback_days") }} day'
+                select max(run_date) - INTERVAL '{{ var("lookback_days") }} day'
                 from {{ this }}
             )
         {% endif %}

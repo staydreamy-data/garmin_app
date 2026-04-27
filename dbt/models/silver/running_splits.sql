@@ -27,7 +27,7 @@ inner join {{ ref('running_trainings') }} as a
         {% if is_incremental() %}
             and s.run_date::DATE
             >= (
-                select max(run_date) - interval '{{ var("lookback_days") }} day'
+                select max(run_date) - INTERVAL '{{ var("lookback_days") }} day'
                 from {{ this }}
             )
         {% endif %}

@@ -1,4 +1,4 @@
-{{ 
+{{
     config(
         materialized = 'incremental',
         unique_key = ['activity_id', 'distance_km_bucket']
@@ -7,13 +7,16 @@
 
 
 with base as (
-select 
-*,
-cast(ceil(distance_m / 1000) as integer) as distance_km_bucket
+select
+    *,
+    cast(ceil(distance_m / 1000) as integer) as distance_km_bucket
 from {{ ref('running_activity_details') }} as d
 where distance_m > 0 and speed_mps > 0
     {% if is_incremental() %}
-        and d.run_date >= (select max(run_date) - interval '{{ var("lookback_days") }} day' as max_date from {{this}})
+        and d.run_date >= (
+            select max(run_date) - interval '{{ var("lookback_days") }} day'
+            from {{ ref('running_activity_details') }}
+        )
     {% endif %}
 ),
 
@@ -55,6 +58,7 @@ bucket_last_values as (
 
 select
     s.activity_id,
+    b.run_date,
     s.distance_km_bucket,
     s.split_duration_sec,
     a.avg_speed_mps,
@@ -65,3 +69,6 @@ from bucket_last_values s
 left join bucket_aggregates a
     on s.activity_id = a.activity_id
    and s.distance_km_bucket = a.distance_km_bucket
+left join bucket_endpoints b
+    on s.activity_id = b.activity_id
+   and s.distance_km_bucket = b.distance_km_bucket
