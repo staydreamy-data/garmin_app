@@ -30,6 +30,7 @@ top_level_steps as (
         -- Subtract 1 from step order to align with splits
         cast(ws.value ->> '$.stepOrder' as integer) as step_order,
         cast(ws.value ->> '$.stepType.stepTypeKey' as varchar) as step_type,
+        cast(ws.value ->> '$.numberOfIterations' as integer) as number_of_iterations,
         cast(ws.value ->> '$.endCondition.conditionTypeKey' as varchar)
             as end_condition_type_key,
         cast(ws.value ->> '$.endConditionValue' as double)
@@ -74,6 +75,7 @@ all_steps as (
         workout_id,
         workout_name,
         step_order,
+        number_of_iterations,
         step_dto_type,
         step_type,
         end_condition_type_key,
@@ -90,6 +92,7 @@ all_steps as (
         workout_id,
         workout_name,
         step_order,
+        NULL as number_of_iterations,
         step_dto_type,
         step_type,
         end_condition_type_key,
@@ -148,6 +151,7 @@ select
     workout_id,
     workout_name,
     step_order,
+    number_of_iterations,
     step_type,
     target_goal,
     target_distance_m,
