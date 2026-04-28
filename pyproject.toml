@@ -12,6 +12,7 @@ dependencies = [
     "pandera>=0.30.1",
     "polars>=1.39.3",
     "python-dotenv>=1.2.1",
+    "streamlit>=1.56.0",
 ]
 
 [project.optional-dependencies]
