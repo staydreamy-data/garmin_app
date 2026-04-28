@@ -9,6 +9,32 @@ models:
         tests:
           - not_null
           - unique
+      - name: start_time_gmt
+        description: "Activity start timestamp in GMT/UTC."
+      - name: distance_m
+        description: "Total running distance in meters."
+      - name: distance_km
+        description: "Total running distance in kilometers rounded to two decimals."
+      - name: duration_sec
+        description: "Total running duration in seconds."
+      - name: duration_min
+        description: "Formatted running duration derived from seconds."
+      - name: average_speed_ms
+        description: "Average running speed in meters per second."
+      - name: average_hr
+        description: "Average heart rate reported for the running activity."
+      - name: has_splits
+        description: "Whether Garmin reported split data for the running activity."
+      - name: device_id
+        description: "Garmin device identifier that recorded the running activity."
+      - name: workout_id
+        description: "Garmin workout identifier linked to the running activity when present."
+      - name: run_date
+        description: "Logical Airflow run date for the processed running activity."
+      - name: training_pace
+        description: "Formatted average pace derived from the activity speed."
+      - name: include_hr
+        description: "Flag indicating whether heart-rate metrics should be treated as available for the run."
 
   - name: running_splits
     description: "Silver split records that belong only to modeled running activities."
@@ -27,10 +53,32 @@ models:
               arguments:
                 to: ref('running_trainings')
                 field: activity_id
+      - name: start_time_gmt
+        description: "Split start timestamp in GMT/UTC."
+      - name: step_type
+        description: "Normalized Garmin intensity or workout step type for the split."
+      - name: distance_m
+        description: "Split distance in meters."
+      - name: duration_sec
+        description: "Split duration in seconds."
+      - name: average_speed_ms
+        description: "Average split speed in meters per second."
+      - name: average_hr
+        description: "Average heart rate reported for the split."
       - name: split_index
         description: "Garmin split index within the parent activity payload."
         tests:
           - not_null
+      - name: workout_id
+        description: "Garmin workout identifier linked to the parent running activity when present."
+      - name: workout_step_index
+        description: "Garmin workout step index associated with the split when present."
+      - name: run_date
+        description: "Logical Airflow run date for the processed split."
+      - name: split_pace
+        description: "Formatted pace derived from the split average speed."
+      - name: include_hr
+        description: "Flag carried from the parent run indicating whether heart-rate data should be surfaced."
 
   - name: running_derived_splits
     description: "Silver running split-like measurements derived from activity detail metrics."
@@ -49,10 +97,22 @@ models:
               arguments:
                 to: ref('running_trainings')
                 field: activity_id
+      - name: run_date
+        description: "Logical Airflow run date for the processed activity detail bucket."
       - name: distance_km_bucket
-        description: "Distance bucket in kilometers used to group activity detail measurements into split-like records."
+        description: "Whole-kilometer distance bucket used to group activity detail measurements into split-like records."
         tests:
           - not_null
+      - name: split_duration_sec
+        description: "Derived duration in seconds for the kilometer bucket."
+      - name: avg_speed_mps
+        description: "Average speed in meters per second across measurements in the bucket."
+      - name: avg_heart_rate_bpm
+        description: "Average heart rate in beats per minute across measurements in the bucket."
+      - name: split_duration_min
+        description: "Formatted derived split duration."
+      - name: split_pace
+        description: "Formatted pace derived from the bucket average speed."
 
   - name: running_activity_details
     description: "Silver running activity detail measurements pivoted from bronze metric rows."
@@ -75,6 +135,22 @@ models:
         description: "Measurement position within the running activity detail payload."
         tests:
           - not_null
+      - name: run_date
+        description: "Logical Airflow run date for the processed detail row."
+      - name: timestamp_raw
+        description: "Raw direct timestamp metric captured for the measurement."
+      - name: distance_m
+        description: "Cumulative distance in meters at the measurement."
+      - name: duration_sec
+        description: "Cumulative duration in seconds at the measurement."
+      - name: elapsed_duration_sec
+        description: "Cumulative elapsed duration in seconds at the measurement."
+      - name: moving_duration_sec
+        description: "Cumulative moving duration in seconds at the measurement."
+      - name: speed_mps
+        description: "Instantaneous speed in meters per second at the measurement."
+      - name: heart_rate_bpm
+        description: "Instantaneous heart rate in beats per minute at the measurement."
 
   - name: running_workouts
     description: "Silver running workout steps exploded from bronze workout segment JSON."
@@ -89,10 +165,28 @@ models:
         description: "Garmin workout identifier."
         tests:
           - not_null
+      - name: workout_name
+        description: "User-facing Garmin workout name."
       - name: step_order
-        description: "Garmin workout step order."
+        description: "Garmin workout step order from the structured workout definition."
         tests:
           - not_null
+      - name: number_of_iterations
+        description: "Iteration count for repeat steps when Garmin defines a repeat block."
+      - name: step_type
+        description: "Normalized workout step type such as warmup, interval, recovery, repeat, or cooldown."
+      - name: target_goal
+        description: "Primary target goal type for the step, such as distance or time."
+      - name: target_distance_m
+        description: "Target distance in meters for distance-based workout steps."
+      - name: target_time_sec
+        description: "Target duration in seconds for time-based workout steps."
+      - name: target_pace_lower_range
+        description: "Formatted lower bound of the target pace range when the workout defines a pace zone."
+      - name: target_pace_upper_range
+        description: "Formatted upper bound of the target pace range when the workout defines a pace zone."
+      - name: garmin_step_index
+        description: "Derived Garmin workout step index used to align planned workout steps to executed splits."
 
   - name: running_workout_results
     description: "Silver running workout results that align executed splits to planned workout steps."
@@ -111,7 +205,43 @@ models:
               arguments:
                 to: ref('running_trainings')
                 field: activity_id
+      - name: workout_id
+        description: "Garmin workout identifier linked to the executed running activity."
+      - name: run_date
+        description: "Logical Airflow run date for the processed workout result."
+      - name: workout_name
+        description: "User-facing Garmin workout name."
+      - name: distance_m
+        description: "Executed split distance in meters."
+      - name: distance_km
+        description: "Executed split distance in kilometers rounded to two decimals."
+      - name: duration_sec
+        description: "Executed split duration in seconds."
+      - name: duration_min
+        description: "Formatted executed split duration."
       - name: split_index
         description: "Split index within the executed running workout."
         tests:
           - not_null
+      - name: split_pace
+        description: "Formatted pace for the executed split."
+      - name: workout_step_index
+        description: "Garmin workout step index associated with the executed split."
+      - name: step_type
+        description: "Workout step type for the executed split."
+      - name: target_goal
+        description: "Target goal type for the planned workout step, such as distance or time."
+      - name: target_distance_m
+        description: "Target distance in meters for the planned workout step."
+      - name: target_distance_km
+        description: "Target distance in kilometers rounded to two decimals."
+      - name: target_time_sec
+        description: "Target duration in seconds for the planned workout step."
+      - name: target_time_min
+        description: "Formatted target duration."
+      - name: target_pace_lower_range
+        description: "Formatted lower bound of the planned target pace range."
+      - name: target_pace_upper_range
+        description: "Formatted upper bound of the planned target pace range."
+      - name: average_hr
+        description: "Average heart rate reported for the executed split."
