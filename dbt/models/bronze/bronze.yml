@@ -16,7 +16,7 @@ models:
       - name: activity_name
         description: "User-facing Garmin activity name."
       - name: activity_type
-        description: "Normalized Garmin activity type key(cycling, running)"
+        description: "Normalized Garmin activity type key, for example running or cycling."
       - name: distance
         description: "Total activity distance reported by Garmin."
       - name: duration
@@ -33,6 +33,8 @@ models:
         description: "Whether Garmin reports split data for the activity."
       - name: device_id
         description: "Garmin device identifier that recorded the activity."
+      - name: workout_id
+        description: "Garmin workout identifier linked to the activity when present."
       - name: ingested_at
         description: "Timestamp when the raw-to-landing pipeline processed the source JSON file."
       - name: ingestion_date
@@ -48,9 +50,10 @@ models:
     description: "Bronze split or lap-level records loaded from landing parquet files."
     tests:
       - dbt_utils.unique_combination_of_columns:
-          combination_of_columns:
-            - activity_id
-            - message_index
+          arguments:
+            combination_of_columns:
+              - activity_id
+              - message_index
     columns:
       - name: activity_id
         description: "Garmin activity identifier the split belongs to."
@@ -70,6 +73,8 @@ models:
         description: "Maximum heart rate reported for the split."
       - name: message_index
         description: "Garmin split index within the activity payload."
+      - name: workout_step_index
+        description: "Garmin workout step index associated with the split when present."
       - name: ingested_at
         description: "Timestamp when the raw-to-landing pipeline processed the source JSON file."
       - name: ingestion_date
@@ -80,19 +85,16 @@ models:
         description: "Raw JSON filename that produced the landing parquet record."
       - name: dt
         description: "Partition date derived from the Hive-style landing path."
-      - name: workout_step_index
-        description: "Garmin workout step index associated with the split when present."
 
   - name: activity_details
     description: "Bronze long-form activity detail metrics expanded from Garmin descriptor-based metric payloads."
-
     tests:
       - dbt_utils.unique_combination_of_columns:
-          combination_of_columns:
-            - activity_id
-            - measurement_index
-            - metric_index
-
+          arguments:
+            combination_of_columns:
+              - activity_id
+              - measurement_index
+              - metric_index
     columns:
       - name: activity_id
         description: "Garmin activity identifier the metric row belongs to."
@@ -131,8 +133,12 @@ models:
         description: "User-facing Garmin workout name."
       - name: workout_type
         description: "Normalized Garmin workout type key, for example running or cycling."
-      - name: workoutSegments
-        description: "List of workout segments with associated metadata and metrics."
+      - name: estimated_duration_in_secs
+        description: "Estimated workout duration in seconds from the Garmin workout definition."
+      - name: estimated_distance_in_meters
+        description: "Estimated workout distance in meters from the Garmin workout definition."
+      - name: workout_segments
+        description: "Serialized Garmin workout segments payload with segment steps and targets."
       - name: ingested_at
         description: "Timestamp when the raw-to-landing pipeline processed the source JSON file."
       - name: ingestion_date

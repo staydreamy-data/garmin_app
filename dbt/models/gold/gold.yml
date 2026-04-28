@@ -9,6 +9,12 @@ models:
         tests:
           - not_null
           - unique
+      - name: workout_id
+        description: "Garmin workout identifier linked to the run when present."
+      - name: run_date
+        description: "Logical Airflow run date for the summarized training."
+      - name: training_summary
+        description: "Short natural-language summary of the run distance and duration."
 
   - name: running_derived_splits_summary
     description: "Gold summary row for each non-workout running training derived from split-like buckets."
@@ -18,6 +24,12 @@ models:
         tests:
           - not_null
           - unique
+      - name: run_date
+        description: "Logical Airflow run date for the summarized non-workout training."
+      - name: full_summary
+        description: "Multi-line natural-language summary of derived kilometer split paces."
+      - name: training_summary
+        description: "Short natural-language summary of the run distance and duration."
 
   - name: running_workout_results_summary
     description: "Gold summary row for each structured running workout result."
@@ -27,6 +39,12 @@ models:
         tests:
           - not_null
           - unique
+      - name: run_date
+        description: "Logical Airflow run date for the summarized workout result."
+      - name: full_summary
+        description: "Multi-line natural-language summary of workout targets and actual split results."
+      - name: training_summary
+        description: "Short natural-language summary of the run distance and duration."
 
   - name: running_summary
     description: "Gold unified summary row for each running activity."
@@ -36,6 +54,12 @@ models:
         tests:
           - not_null
           - unique
+      - name: run_date
+        description: "Logical Airflow run date for the unified running summary."
+      - name: full_summary
+        description: "Detailed natural-language summary for either a workout run or a non-workout run."
+      - name: training_summary
+        description: "Short natural-language summary of the run distance and duration."
 
   - name: running_workout_summary
     description: "Gold planned workout description row for each running workout."
@@ -45,3 +69,7 @@ models:
         tests:
           - not_null
           - unique
+      - name: workout_name
+        description: "User-facing Garmin workout name."
+      - name: workout_summary
+        description: "Multi-line natural-language summary of the planned repeat blocks in the workout."
