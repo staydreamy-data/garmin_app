@@ -1,5 +1,10 @@
-import streamlit as st
+import os
+
 import requests
+import streamlit as st
+
+API_URL = os.getenv("TRAINER_API_URL", "http://localhost:8000")
+
 
 st.title("Personal AI Trainer")
 
@@ -16,14 +21,19 @@ if prompt := st.chat_input("Ask about your training"):
     with st.chat_message("user"):
         st.write(prompt)
 
-    response = requests.post(
-        "http://localhost:8000/chat",
-        json={"message": prompt},
-        timeout=30,
-    )
-    answer = response.json()["answer"]
+    try:
+        response = requests.post(
+            f"{API_URL}/chat",
+            json={"message": prompt},
+            timeout=60,
+        )
+        response.raise_for_status()
+        answer = response.json()["answer"]
+    except requests.RequestException as exc:
+        answer = f"Backend error: {exc}"
 
     st.session_state.messages.append({"role": "assistant", "content": answer})
 
     with st.chat_message("assistant"):
         st.write(answer)
+
