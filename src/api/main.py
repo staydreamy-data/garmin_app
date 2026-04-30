@@ -3,11 +3,39 @@ import os
 import requests
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from pathlib import Path
+
+import duckdb
 
 app = FastAPI()
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:4b")
+
+
+DUCKDB_PATH = Path(__file__).resolve().parents[2] / "astro/include/data/duckdb/garmin_db.duckdb"
+
+
+def get_latest_training_context() -> str:
+    con = duckdb.connect(str(DUCKDB_PATH), read_only=True)
+    try:
+        row = con.execute(
+            """
+            SELECT run_date, training_summary
+            FROM dev_gold.running_trainings_summary
+            ORDER BY run_date DESC, activity_id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+    finally:
+        con.close()
+
+    if row is None:
+        return "No training summary available."
+
+    run_date, training_summary = row
+    return f"Latest run on {run_date}: {training_summary}"
+
 
 
 class ChatRequest(BaseModel):
@@ -20,13 +48,7 @@ def health():
 
 @app.post("/chat")
 def chat(request: ChatRequest):
-    training_context = """
-- Last 7 days: 32 km total
-- 3 runs completed
-- Longest run: 14 km
-- Most recent run: 8 km easy
-- No injury data available
-""".strip()
+    training_context = get_latest_training_context()
 
     prompt = f"""
 You are a concise running coach.
