@@ -13,7 +13,9 @@ OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:4b")
 
 
-DUCKDB_PATH = Path(__file__).resolve().parents[2] / "astro/include/data/duckdb/garmin_db.duckdb"
+DUCKDB_PATH = (
+    Path(__file__).resolve().parents[2] / "astro/include/data/duckdb/garmin_db.duckdb"
+)
 
 
 def get_latest_training_context() -> str:
@@ -37,9 +39,9 @@ def get_latest_training_context() -> str:
     return f"Latest run on {run_date}: {training_summary}"
 
 
-
 class ChatRequest(BaseModel):
     message: str
+
 
 @app.get("/health")
 def health():
@@ -80,7 +82,9 @@ User question:
         )
         response.raise_for_status()
     except requests.RequestException as exc:
-        raise HTTPException(status_code=502, detail=f"Ollama request failed: {exc}") from exc
+        raise HTTPException(
+            status_code=502, detail=f"Ollama request failed: {exc}"
+        ) from exc
 
     data = response.json()
     return {"answer": data["response"]}

@@ -36,4 +36,3 @@ if prompt := st.chat_input("Ask about your training"):
 
     with st.chat_message("assistant"):
         st.write(answer)
-
