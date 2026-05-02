@@ -18,9 +18,13 @@ This version should stay intentionally simple:
 
 - Add PostgreSQL as the application-state database, separate from DuckDB analytics storage.
 - Add `SQLAlchemy`, `Alembic`, and a Postgres driver to the app dependencies.
-- Introduce two tables only for v1:
+- Use Alembic migrations as the source of truth for schema creation and schema changes.
+- Run `alembic upgrade head` after PostgreSQL is available instead of relying on a one-off SQL file to create tables.
+- If needed for fresh local bootstrap only, use Docker init scripts for one-time setup tasks such as future extensions or schema namespace creation, but not as the main schema-management mechanism.
+- Introduce three core tables for v1:
   - `chat_sessions`
   - `chat_messages`
+  - `llm_runs`
 - `chat_sessions` fields:
   - `id` as UUID primary key
   - `title` as nullable text
@@ -32,8 +36,23 @@ This version should stay intentionally simple:
   - `role` constrained to `user` or `assistant`
   - `content` as text
   - `created_at`
+- `llm_runs` fields:
+  - `id` as UUID primary key
+  - `session_id` as foreign key to `chat_sessions.id`
+  - `user_message_id` as foreign key to `chat_messages.id`
+  - `assistant_message_id` as nullable foreign key to `chat_messages.id`
+  - `model_name`
+  - `provider` defaulting to `ollama`
+  - `prompt_tokens` as nullable integer
+  - `completion_tokens` as nullable integer
+  - `total_tokens` as nullable integer
+  - `duration_ms` as nullable integer
+  - `status`
+  - `error_message` as nullable text
+  - `created_at`
 - Create an index on `chat_messages.session_id, created_at` for ordered history reads.
-- Do not add summary fields, embeddings, metadata blobs, or feedback tables in v1.
+- Create an index on `llm_runs.session_id, created_at` for session-level observability reads.
+- Do not add summary fields, embeddings, generic metrics tables, metadata blobs, or feedback tables in v1.
 
 ### Backend API and prompt flow
 
@@ -45,6 +64,7 @@ This version should stay intentionally simple:
 - `/chat` behavior:
   - if `session_id` is missing, create a new session
   - persist the user message before model invocation
+  - create an `llm_runs` record for the model call lifecycle
   - load the last N messages for that session ordered ascending
   - load existing Garmin training context from DuckDB
   - build one prompt from:
@@ -54,6 +74,7 @@ This version should stay intentionally simple:
     - current user message
   - call Ollama
   - persist the assistant reply
+  - update the matching `llm_runs` row with status, latency, model name, and any available usage metrics
   - return `session_id` and `answer`
 - Add a `GET /sessions` endpoint that lists sessions ordered by `updated_at DESC`.
 - Add a `GET /sessions/{session_id}/messages` endpoint that returns the full message history for UI resume.
@@ -124,8 +145,11 @@ This version should stay intentionally simple:
   - empty history path still works for a brand-new session
 - Add error-path tests:
   - unknown `session_id` returns 404
-  - Ollama failure returns 502 and does not create an assistant message
+  - Ollama failure returns 502, does not create an assistant message, and stores a failed `llm_runs` status
   - DB connection failure surfaces as 500-level API error
+- Add schema-management tests or setup checks:
+  - fresh database can be created from Alembic migrations only
+  - rerunning `alembic upgrade head` is a no-op on an already migrated database
 - Add a simple UI smoke test plan if no Streamlit automation is added yet:
   - create new chat
   - reload app
@@ -141,7 +165,8 @@ This version should stay intentionally simple:
 - Recent history is capped by message count, not token count.
 - One local user is assumed; no auth or multi-user tenancy is included.
 - Session titles are auto-generated from the first user message.
-- The plan assumes the repo will add database dependencies and migrations before implementation starts.
+- The plan assumes the repo will add database dependencies and Alembic migrations before implementation starts.
+- Token metrics are stored when the model provider returns them; nullable fields are acceptable because local Ollama responses may not always provide complete token accounting.
 - Future extensions should layer on top of this design:
   - session summaries as a new nullable field or related table
   - semantic recall via `pgvector`
