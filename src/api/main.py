@@ -4,6 +4,16 @@ import requests
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from pathlib import Path
+from src.api.db.crud import (
+    create_chat_message,
+    create_chat_session,
+    create_llm_run,
+    get_chat_session,
+    get_messages_by_session,
+    update_llm_run_failure,
+    update_llm_run_success,
+)
+from src.api.db.session import get_db
 
 import duckdb
 
