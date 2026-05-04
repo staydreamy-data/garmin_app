@@ -68,7 +68,8 @@ def get_messages_by_session(
     if limit is not None:
         stmt = stmt.limit(limit)
 
-    return db.scalars(stmt).all()
+    messages = db.scalars(stmt).all()
+    return list(reversed(messages))
 
 
 def create_llm_run(

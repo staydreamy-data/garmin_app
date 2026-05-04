@@ -31,6 +31,18 @@ DUCKDB_PATH = (
 )
 
 
+def format_conversation_history(messages) -> str:
+    if not messages:
+        return "No previous conversation."
+
+    lines = []
+    for message in messages:
+        role = "User" if message.role == "user" else "Assistant"
+        lines.append(f"{role}: {message.content}")
+
+    return "\n".join(lines)
+
+
 def get_latest_training_context() -> str:
     con = duckdb.connect(str(DUCKDB_PATH), read_only=True)
     try:
@@ -76,6 +88,10 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
         if chat_session is None:
             raise HTTPException(status_code=404, detail="Session not found")
 
+    recent_messages = get_messages_by_session(db, chat_session.id, limit=20)
+
+    conversation_history = format_conversation_history(recent_messages)
+
     user_message = create_chat_message(
         db=db,
         session_id=chat_session.id,
@@ -95,18 +111,23 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
     training_context = get_latest_training_context()
 
     prompt = f"""
-You are a concise running coach.
-Use the training context when answering.
-If the context is incomplete, say what assumption you are making.
-Do not invent Garmin metrics that were not provided.
-Answer in 4 short bullet points max.
+    You are a concise running coach.
+    Use the training context when answering.
+    Use the conversation history to preserve continuity across the session.
+    If the context is incomplete, say what assumption you are making.
+    Do not invent Garmin metrics that were not provided.
+    Answer in 4 short bullet points max.
 
-Training context:
-{training_context}
+    Training context:
+    {training_context}
 
-User question:
-{request.message}
-""".strip()
+    Conversation history:
+    {conversation_history}
+
+    User question:
+    {request.message}
+    """.strip()
+
 
     try:
         response = requests.post(

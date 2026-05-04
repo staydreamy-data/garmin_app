@@ -11,6 +11,11 @@ st.title("Personal AI Trainer")
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+if "session_id" not in st.session_state:
+    st.session_state.session_id = None
+
+st.caption(f"Current session: {st.session_state.session_id}")
+
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
@@ -24,11 +29,17 @@ if prompt := st.chat_input("Ask about your training"):
     try:
         response = requests.post(
             f"{API_URL}/chat",
-            json={"message": prompt},
+            json={
+                "session_id": st.session_state.session_id,
+                "message": prompt
+            },
             timeout=60,
         )
         response.raise_for_status()
-        answer = response.json()["answer"]
+        payload = response.json()
+        st.session_state.session_id = payload["session_id"]
+        answer = payload["answer"]
+
     except requests.RequestException as exc:
         answer = f"Backend error: {exc}"
 
