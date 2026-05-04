@@ -1,7 +1,11 @@
 import os
+from uuid import UUID
 
 import requests
-from fastapi import FastAPI, HTTPException
+import time
+
+from fastapi import FastAPI, HTTPException, Depends
+from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from pathlib import Path
 from src.api.db.crud import (
@@ -50,7 +54,12 @@ def get_latest_training_context() -> str:
 
 
 class ChatRequest(BaseModel):
+    session_id: UUID | None = None
     message: str
+
+class ChatResponse(BaseModel):
+    session_id: UUID
+    answer: str
 
 
 @app.get("/health")
@@ -58,8 +67,32 @@ def health():
     return {"status": "ok", "model": OLLAMA_MODEL}
 
 
-@app.post("/chat")
-def chat(request: ChatRequest):
+@app.post("/chat", response_model=ChatResponse)
+def chat(request: ChatRequest, db: Session = Depends(get_db)):
+    if request.session_id is None:
+        chat_session = create_chat_session(db)
+    else:
+        chat_session = get_chat_session(db, request.session_id)
+        if chat_session is None:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+    user_message = create_chat_message(
+        db=db,
+        session_id=chat_session.id,
+        role="user",
+        content=request.message,
+    )
+
+    llm_run = create_llm_run(
+        db=db,
+        session_id=chat_session.id,
+        user_message_id=user_message.id,
+        model_name=OLLAMA_MODEL,
+    )
+
+    started_at = time.perf_counter()
+
+
     training_context = get_latest_training_context()
 
     prompt = f"""
@@ -84,7 +117,7 @@ User question:
                 "prompt": prompt,
                 "stream": False,
                 "options": {
-                    "num_predict": 120,
+                    "num_predict": 1000,
                     "temperature": 0.3,
                 },
             },
@@ -92,9 +125,47 @@ User question:
         )
         response.raise_for_status()
     except requests.RequestException as exc:
+        duration_ms = int((time.perf_counter() - started_at) * 1000)
+
+        update_llm_run_failure(
+            db=db,
+            llm_run=llm_run,
+            error_message=str(exc),
+            duration_ms=duration_ms,
+        )
+
         raise HTTPException(
             status_code=502, detail=f"Ollama request failed: {exc}"
         ) from exc
 
     data = response.json()
-    return {"answer": data["response"]}
+
+    answer = data["response"]
+
+    assistant_message = create_chat_message(
+        db=db,
+        session_id=chat_session.id,
+        role="assistant",
+        content=answer,
+    )
+
+    duration_ms = int((time.perf_counter() - started_at) * 1000)
+
+    update_llm_run_success(
+        db=db,
+        llm_run=llm_run,
+        assistant_message_id=assistant_message.id,
+        prompt_tokens=data.get("prompt_eval_count"),
+        completion_tokens=data.get("eval_count"),
+        total_tokens=(
+            (data.get("prompt_eval_count") or 0) + (data.get("eval_count") or 0)
+            if data.get("prompt_eval_count") is not None or data.get("eval_count") is not None
+            else None
+        ),
+        duration_ms=duration_ms,
+    )
+
+
+    return {"session_id": chat_session.id, "answer": answer}
+
+
