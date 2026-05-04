@@ -13,7 +13,6 @@ from src.api.db.crud import (
     create_chat_session,
     create_llm_run,
     get_chat_session,
-    get_messages_by_session,
     update_llm_run_failure,
     update_llm_run_success,
 )
@@ -57,6 +56,7 @@ class ChatRequest(BaseModel):
     session_id: UUID | None = None
     message: str
 
+
 class ChatResponse(BaseModel):
     session_id: UUID
     answer: str
@@ -91,7 +91,6 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
     )
 
     started_at = time.perf_counter()
-
 
     training_context = get_latest_training_context()
 
@@ -159,13 +158,11 @@ User question:
         completion_tokens=data.get("eval_count"),
         total_tokens=(
             (data.get("prompt_eval_count") or 0) + (data.get("eval_count") or 0)
-            if data.get("prompt_eval_count") is not None or data.get("eval_count") is not None
+            if data.get("prompt_eval_count") is not None
+            or data.get("eval_count") is not None
             else None
         ),
         duration_ms=duration_ms,
     )
 
-
     return {"session_id": chat_session.id, "answer": answer}
-
-
