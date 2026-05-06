@@ -1,0 +1,16 @@
+### How to open my duckdb file in ui
+duckdb -ui /workspaces/garmin_app/astro/include/data/duckdb/garmin_db.duckdb
+### Raw to landing output
+Validated parquet is kept under `astro/include/data/landing/<asset>/dt=<YYYY-MM-DD>/<asset>.parquet` for dbt/DuckDB to consume later.
+### To run tests again after container reloading:
+uv sync --extra airflow-tests --cache-dir .uv-cache
+
+# TODO
+deduplication for raw layer
+add flag that checks if workout makes sense, as it could be changed over time
+make silver layer incremental
+make workouts as SCD2
+add target to workout
+add seed for target types for mapping
+make the model better for include_hr
+workout model - not really incremental

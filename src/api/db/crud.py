@@ -1,0 +1,226 @@
+import uuid
+from typing import Sequence
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from src.api.db.models import ChatMessage, ChatSession, LLMRun
+
+
+def create_chat_session(db: Session, title: str | None = None) -> ChatSession:
+    """Create a new persisted conversation thread.
+
+    Args:
+        db: Active SQLAlchemy session for the current request.
+        title: Optional session title to store at creation time.
+
+    Returns:
+        The newly created chat session row.
+    """
+    session = ChatSession(title=title)
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    return session
+
+
+def get_chat_session(db: Session, session_id: uuid.UUID) -> ChatSession | None:
+    """Fetch a single conversation thread by its UUID.
+
+    Args:
+        db: Active SQLAlchemy session for the current request.
+        session_id: Persisted chat session identifier.
+
+    Returns:
+        The matching chat session if found, otherwise ``None``.
+    """
+    stmt = select(ChatSession).where(ChatSession.id == session_id)
+    return db.scalar(stmt)
+
+
+def list_chat_sessions(db: Session) -> Sequence[ChatSession]:
+    """Return sessions ordered by most recent activity first.
+
+    Args:
+        db: Active SQLAlchemy session for the current request.
+
+    Returns:
+        All chat sessions ordered by descending ``updated_at``.
+    """
+    stmt = select(ChatSession).order_by(ChatSession.updated_at.desc())
+    return db.scalars(stmt).all()
+
+
+def update_chat_session_title(
+    db: Session,
+    session: ChatSession,
+    title: str | None,
+) -> ChatSession:
+    """Persist a human-readable title for an existing chat session.
+
+    Args:
+        db: Active SQLAlchemy session for the current request.
+        session: Existing chat session row to update.
+        title: New title value to persist.
+
+    Returns:
+        The refreshed chat session after the title update.
+    """
+    session.title = title
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    return session
+
+
+def create_chat_message(
+    db: Session,
+    session_id: uuid.UUID,
+    role: str,
+    content: str,
+) -> ChatMessage:
+    """Store one user or assistant turn for a persisted session.
+
+    Args:
+        db: Active SQLAlchemy session for the current request.
+        session_id: Parent chat session identifier.
+        role: Message author role, typically ``user`` or ``assistant``.
+        content: Raw message text to persist.
+
+    Returns:
+        The newly created chat message row.
+    """
+    message = ChatMessage(
+        session_id=session_id,
+        role=role,
+        content=content,
+    )
+    db.add(message)
+    db.commit()
+    db.refresh(message)
+    return message
+
+
+def get_messages_by_session(
+    db: Session,
+    session_id: uuid.UUID,
+    limit: int | None = None,
+) -> Sequence[ChatMessage]:
+    """Load recent messages for a session in chronological order.
+
+    Args:
+        db: Active SQLAlchemy session for the current request.
+        session_id: Parent chat session identifier.
+        limit: Optional maximum number of most recent messages to return.
+
+    Returns:
+        Session messages ordered from oldest to newest within the selected window.
+    """
+    stmt = (
+        select(ChatMessage)
+        .where(ChatMessage.session_id == session_id)
+        .order_by(ChatMessage.created_at.desc())
+    )
+
+    if limit is not None:
+        stmt = stmt.limit(limit)
+
+    messages = db.scalars(stmt).all()
+    return list(reversed(messages))
+
+
+def create_llm_run(
+    db: Session,
+    session_id: uuid.UUID,
+    user_message_id: uuid.UUID,
+    model_name: str,
+    provider: str = "ollama",
+    status: str = "started",
+) -> LLMRun:
+    """Create a tracking row for one local-LLM inference attempt.
+
+    Args:
+        db: Active SQLAlchemy session for the current request.
+        session_id: Chat session associated with the model call.
+        user_message_id: User message that triggered the inference.
+        model_name: Local model identifier sent to Ollama.
+        provider: Inference backend name, defaulting to ``ollama``.
+        status: Initial lifecycle status for the run.
+
+    Returns:
+        The newly created LLM run row.
+    """
+    llm_run = LLMRun(
+        session_id=session_id,
+        user_message_id=user_message_id,
+        model_name=model_name,
+        provider=provider,
+        status=status,
+    )
+    db.add(llm_run)
+    db.commit()
+    db.refresh(llm_run)
+    return llm_run
+
+
+def update_llm_run_success(
+    db: Session,
+    llm_run: LLMRun,
+    assistant_message_id: uuid.UUID,
+    prompt_tokens: int | None = None,
+    completion_tokens: int | None = None,
+    total_tokens: int | None = None,
+    duration_ms: int | None = None,
+) -> LLMRun:
+    """Mark an inference run as successful and store usage metrics.
+
+    Args:
+        db: Active SQLAlchemy session for the current request.
+        llm_run: Existing LLM run row to update.
+        assistant_message_id: Assistant message generated by the run.
+        prompt_tokens: Number of prompt tokens reported by Ollama, if available.
+        completion_tokens: Number of completion tokens reported by Ollama, if available.
+        total_tokens: Total tokens for the run, if available.
+        duration_ms: End-to-end runtime for the model call in milliseconds.
+
+    Returns:
+        The refreshed LLM run after metrics are persisted.
+    """
+    llm_run.assistant_message_id = assistant_message_id
+    llm_run.prompt_tokens = prompt_tokens
+    llm_run.completion_tokens = completion_tokens
+    llm_run.total_tokens = total_tokens
+    llm_run.duration_ms = duration_ms
+    llm_run.status = "completed"
+
+    db.add(llm_run)
+    db.commit()
+    db.refresh(llm_run)
+    return llm_run
+
+
+def update_llm_run_failure(
+    db: Session,
+    llm_run: LLMRun,
+    error_message: str,
+    duration_ms: int | None = None,
+) -> LLMRun:
+    """Mark an inference run as failed and capture the error details.
+
+    Args:
+        db: Active SQLAlchemy session for the current request.
+        llm_run: Existing LLM run row to update.
+        error_message: Failure details captured from the model request.
+        duration_ms: Runtime recorded before the failure was raised.
+
+    Returns:
+        The refreshed LLM run after failure details are persisted.
+    """
+    llm_run.status = "failed"
+    llm_run.error_message = error_message
+    llm_run.duration_ms = duration_ms
+
+    db.add(llm_run)
+    db.commit()
+    db.refresh(llm_run)
+    return llm_run
