@@ -19,7 +19,7 @@ jobs:
     env:
       AIRFLOW_HOME: ${{ github.workspace }}/astro
       AIRFLOW__CORE__DAGS_FOLDER: ${{ github.workspace }}/astro/dags
-      PYTHONPATH: ${{ github.workspace }}/astro
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/astro
       DBT_DUCKDB_PATH: ${{ github.workspace }}/.tmp/dbt/garmin_ci.duckdb
 
     steps:
