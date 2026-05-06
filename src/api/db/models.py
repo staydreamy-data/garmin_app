@@ -10,6 +10,7 @@ from src.api.db.base import Base
 
 class ChatSession(Base):
     """Conversation metadata used to resume a training chat later."""
+
     __tablename__ = "chat_sessions"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -36,6 +37,7 @@ class ChatSession(Base):
 
 class ChatMessage(Base):
     """One persisted user or assistant message within a chat session."""
+
     __tablename__ = "chat_messages"
     __table_args__ = (
         Index("ix_chat_messages_session_id_created_at", "session_id", "created_at"),
@@ -63,6 +65,7 @@ class ChatMessage(Base):
 
 class LLMRun(Base):
     """Operational record for one Ollama call and its token/latency metrics."""
+
     __tablename__ = "llm_runs"
     __table_args__ = (
         Index("ix_llm_runs_session_id_created_at", "session_id", "created_at"),

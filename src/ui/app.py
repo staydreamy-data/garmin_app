@@ -35,10 +35,7 @@ if prompt := st.chat_input("Ask about your training"):
     try:
         response = requests.post(
             f"{API_URL}/chat",
-            json={
-                "session_id": st.session_state.session_id,
-                "message": prompt
-            },
+            json={"session_id": st.session_state.session_id, "message": prompt},
             timeout=60,
         )
         response.raise_for_status()

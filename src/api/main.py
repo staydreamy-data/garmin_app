@@ -32,6 +32,7 @@ DUCKDB_PATH = (
     Path(__file__).resolve().parents[2] / "astro/include/data/duckdb/garmin_db.duckdb"
 )
 
+
 def build_session_title(message: str, max_length: int = 60) -> str:
     """Derive a short session label from the first user prompt.
 
@@ -100,12 +101,14 @@ def get_latest_training_context() -> str:
 
 class ChatRequest(BaseModel):
     """Incoming chat payload with optional persisted session continuity."""
+
     session_id: UUID | None = None
     message: str
 
 
 class ChatResponse(BaseModel):
     """API response that returns both the answer and active session identifier."""
+
     session_id: UUID
     answer: str
 
@@ -156,7 +159,6 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
         title = build_session_title(request.message)
         chat_session = update_chat_session_title(db, chat_session, title)
 
-
     llm_run = create_llm_run(
         db=db,
         session_id=chat_session.id,
@@ -185,7 +187,6 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
     User question:
     {request.message}
     """.strip()
-
 
     try:
         response = requests.post(
