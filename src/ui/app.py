@@ -14,6 +14,12 @@ if "messages" not in st.session_state:
 if "session_id" not in st.session_state:
     st.session_state.session_id = None
 
+if st.button("New chat"):
+    # Reset the UI state so the next prompt creates a new persisted chat session.
+    st.session_state.session_id = None
+    st.session_state.messages = []
+    st.rerun()
+
 st.caption(f"Current session: {st.session_state.session_id}")
 
 for message in st.session_state.messages:

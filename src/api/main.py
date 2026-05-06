@@ -15,6 +15,8 @@ from src.api.db.crud import (
     get_chat_session,
     update_llm_run_failure,
     update_llm_run_success,
+    get_messages_by_session,
+    update_chat_session_title,
 )
 from src.api.db.session import get_db
 
@@ -30,8 +32,35 @@ DUCKDB_PATH = (
     Path(__file__).resolve().parents[2] / "astro/include/data/duckdb/garmin_db.duckdb"
 )
 
+def build_session_title(message: str, max_length: int = 60) -> str:
+    """Derive a short session label from the first user prompt.
+
+    Args:
+        message: Raw user text from the opening turn of a chat session.
+        max_length: Maximum allowed title length before truncation.
+
+    Returns:
+        A cleaned, human-readable title suitable for later session lists.
+    """
+    cleaned = " ".join(message.strip().split())
+    if not cleaned:
+        return "New chat"
+
+    if len(cleaned) <= max_length:
+        return cleaned
+
+    return cleaned[: max_length - 3].rstrip() + "..."
+
 
 def format_conversation_history(messages) -> str:
+    """Convert persisted chat messages into a plain-text transcript for Ollama.
+
+    Args:
+        messages: Chronologically ordered chat messages loaded from PostgreSQL.
+
+    Returns:
+        A plain-text transcript that can be appended to the local LLM prompt.
+    """
     if not messages:
         return "No previous conversation."
 
@@ -44,6 +73,11 @@ def format_conversation_history(messages) -> str:
 
 
 def get_latest_training_context() -> str:
+    """Load the newest dbt-generated training summary from DuckDB.
+
+    Returns:
+        A short summary of the latest training context for prompt injection.
+    """
     con = duckdb.connect(str(DUCKDB_PATH), read_only=True)
     try:
         row = con.execute(
@@ -65,22 +99,41 @@ def get_latest_training_context() -> str:
 
 
 class ChatRequest(BaseModel):
+    """Incoming chat payload with optional persisted session continuity."""
     session_id: UUID | None = None
     message: str
 
 
 class ChatResponse(BaseModel):
+    """API response that returns both the answer and active session identifier."""
     session_id: UUID
     answer: str
 
 
 @app.get("/health")
 def health():
+    """Return a lightweight health response for the API and selected model.
+
+    Returns:
+        A status payload with the configured Ollama model name.
+    """
     return {"status": "ok", "model": OLLAMA_MODEL}
 
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest, db: Session = Depends(get_db)):
+    """Handle one chat turn, persist it, and call the local Ollama model.
+
+    Args:
+        request: Incoming user message with an optional persisted session ID.
+        db: Request-scoped SQLAlchemy session injected by FastAPI.
+
+    Returns:
+        The assistant answer together with the active session identifier.
+
+    Raises:
+        HTTPException: If the requested session does not exist or Ollama fails.
+    """
     if request.session_id is None:
         chat_session = create_chat_session(db)
     else:
@@ -98,6 +151,11 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
         role="user",
         content=request.message,
     )
+
+    if not chat_session.title:
+        title = build_session_title(request.message)
+        chat_session = update_chat_session_title(db, chat_session, title)
+
 
     llm_run = create_llm_run(
         db=db,

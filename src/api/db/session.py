@@ -15,6 +15,11 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
 def get_db():
+    """Provide one SQLAlchemy session per request and close it afterwards.
+
+    Yields:
+        A request-scoped SQLAlchemy session connected to PostgreSQL.
+    """
     db = SessionLocal()
     try:
         yield db
