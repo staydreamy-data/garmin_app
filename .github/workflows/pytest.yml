@@ -21,7 +21,7 @@ jobs:
       AIRFLOW__CORE__DAGS_FOLDER: ${{ github.workspace }}/astro/dags
       PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/astro
       DBT_DUCKDB_PATH: ${{ github.workspace }}/.tmp/dbt/garmin_ci.duckdb
-
+      DATABASE_URL: postgresql+psycopg://test:test@localhost:5432/test
     steps:
       - name: Checkout
         uses: actions/checkout@v4
