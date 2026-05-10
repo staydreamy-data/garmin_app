@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from src.api.db.base import Base
+from src.api.db import models
 from alembic import context
 import os
 
