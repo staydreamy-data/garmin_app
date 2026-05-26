@@ -28,7 +28,4 @@ def test_format_conversation_history_formats_user_and_assistant_turns() -> None:
 
     result = format_conversation_history(messages)
 
-    assert (
-        result
-        == "User: How was my last run?\nAssistant: You kept a steady pace."
-    )
+    assert result == "User: How was my last run?\nAssistant: You kept a steady pace."

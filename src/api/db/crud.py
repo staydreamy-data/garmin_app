@@ -225,6 +225,7 @@ def update_llm_run_failure(
     db.refresh(llm_run)
     return llm_run
 
+
 def update_chat_session_summary(
     db: Session,
     session: ChatSession,
@@ -248,4 +249,3 @@ def update_chat_session_summary(
     db.commit()
     db.refresh(session)
     return session
-

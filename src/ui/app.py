@@ -1,5 +1,3 @@
-import os
-
 import requests
 import streamlit as st
 from api_client import (
@@ -16,22 +14,23 @@ DEFAULT_SESSION_STATE = {
 }
 
 
-
 def initialize_state():
-
 
     for key, value in DEFAULT_SESSION_STATE.items():
         if key not in st.session_state:
             st.session_state[key] = value
 
+
 def start_new_chat():
     for key, value in DEFAULT_SESSION_STATE.items():
         st.session_state[key] = value
+
 
 def render_messages():
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.write(message["content"])
+
 
 def render_sidebar():
     with st.sidebar:
@@ -61,14 +60,13 @@ def render_sidebar():
             options=options,
             index=current_index,
             format_func=lambda session_id: (
-                "Current chat"
-                if session_id is None
-                else session_options[session_id]
+                "Current chat" if session_id is None else session_options[session_id]
             ),
         )
 
         return selected_session_id
-    
+
+
 st.title("Personal AI Trainer")
 
 initialize_state()
@@ -104,7 +102,9 @@ if prompt := st.chat_input("Ask about your training"):
         st.write(prompt)
 
     try:
-        payload = send_chat_message({"session_id": st.session_state.session_id, "message": prompt})
+        payload = send_chat_message(
+            {"session_id": st.session_state.session_id, "message": prompt}
+        )
         st.session_state.session_id = payload["session_id"]
         answer = payload["answer"]
 

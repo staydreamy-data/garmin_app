@@ -40,7 +40,9 @@ def client():
     main.app.dependency_overrides.clear()
 
 
-def test_chat_creates_new_session_when_session_id_is_missing(monkeypatch, client) -> None:
+def test_chat_creates_new_session_when_session_id_is_missing(
+    monkeypatch, client
+) -> None:
     test_client, dummy_db = client
     session_id = uuid4()
     user_message_id = uuid4()
@@ -110,7 +112,9 @@ def test_chat_creates_new_session_when_session_id_is_missing(monkeypatch, client
         return llm_run
 
     monkeypatch.setattr(main, "update_llm_run_success", fake_update_llm_run_success)
-    monkeypatch.setattr(main.requests, "post", lambda *args, **kwargs: FakeOllamaResponse())
+    monkeypatch.setattr(
+        main.requests, "post", lambda *args, **kwargs: FakeOllamaResponse()
+    )
 
     response = test_client.post("/chat", json={"message": "Help me improve my 10K"})
 
@@ -128,7 +132,9 @@ def test_chat_creates_new_session_when_session_id_is_missing(monkeypatch, client
     assert success_updates[0]["total_tokens"] == 20
 
 
-def test_chat_reuses_existing_session_when_session_id_is_provided(monkeypatch, client) -> None:
+def test_chat_reuses_existing_session_when_session_id_is_provided(
+    monkeypatch, client
+) -> None:
     test_client, dummy_db = client
     session_id = uuid4()
     user_message_id = uuid4()
@@ -167,7 +173,9 @@ def test_chat_reuses_existing_session_when_session_id_is_provided(monkeypatch, c
         lambda db, session_id, user_message_id, model_name: llm_run,
     )
     monkeypatch.setattr(main, "update_llm_run_success", lambda *args, **kwargs: llm_run)
-    monkeypatch.setattr(main.requests, "post", lambda *args, **kwargs: FakeOllamaResponse())
+    monkeypatch.setattr(
+        main.requests, "post", lambda *args, **kwargs: FakeOllamaResponse()
+    )
 
     response = test_client.post(
         "/chat",
@@ -200,7 +208,9 @@ def test_chat_returns_404_for_unknown_session(monkeypatch, client) -> None:
     assert response.json()["detail"] == "Session not found"
 
 
-def test_chat_marks_llm_run_failed_when_ollama_request_fails(monkeypatch, client) -> None:
+def test_chat_marks_llm_run_failed_when_ollama_request_fails(
+    monkeypatch, client
+) -> None:
     test_client, dummy_db = client
     session_id = uuid4()
     user_message_id = uuid4()

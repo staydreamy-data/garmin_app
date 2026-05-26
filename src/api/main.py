@@ -149,6 +149,7 @@ Older conversation to compact:
 Return only the updated session summary.
 """.strip()
 
+
 def generate_session_summary(existing_summary: str | None, messages_to_compact) -> str:
     """Generate an updated compacted summary for older session history."""
     prompt = build_summary_prompt(existing_summary, messages_to_compact)
@@ -158,6 +159,7 @@ def generate_session_summary(existing_summary: str | None, messages_to_compact) 
         temperature=0.1,
     )
     return data["response"].strip()
+
 
 def maybe_compact_session_context(db: Session, chat_session) -> None:
     """Compact older chat turns into a stored session summary.
@@ -179,15 +181,17 @@ def maybe_compact_session_context(db: Session, chat_session) -> None:
     if not messages_to_compact:
         return
 
-    updated_summary = generate_session_summary(chat_session.summary, messages_to_compact)
+    updated_summary = generate_session_summary(
+        chat_session.summary, messages_to_compact
+    )
 
     update_chat_session_summary(
         db=db,
         session=chat_session,
         summary=updated_summary,
-        summarized_message_count=chat_session.summarized_message_count + len(messages_to_compact),
+        summarized_message_count=chat_session.summarized_message_count
+        + len(messages_to_compact),
     )
-
 
 
 def get_latest_training_context() -> str:
@@ -229,6 +233,7 @@ class ChatResponse(BaseModel):
     session_id: UUID
     answer: str
 
+
 class SessionSummaryResponse(BaseModel):
     """Lightweight session metadata for session-list views."""
 
@@ -253,6 +258,7 @@ def health():
     """
     return {"status": "ok", "model": OLLAMA_MODEL}
 
+
 @app.get("/sessions", response_model=list[SessionSummaryResponse])
 def get_sessions(db: Session = Depends(get_db)):
     """List saved chat sessions for resume flows.
@@ -273,6 +279,7 @@ def get_sessions(db: Session = Depends(get_db)):
         )
         for session in sessions
     ]
+
 
 @app.get("/sessions/{session_id}/messages", response_model=list[ChatMessageResponse])
 def get_session_messages(session_id: UUID, db: Session = Depends(get_db)):
@@ -303,7 +310,6 @@ def get_session_messages(session_id: UUID, db: Session = Depends(get_db)):
     ]
 
 
-
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest, db: Session = Depends(get_db)):
     """Handle one chat turn, persist it, and call the local Ollama model.
@@ -326,7 +332,9 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
             raise HTTPException(status_code=404, detail="Session not found")
 
     all_session_messages = list(get_messages_by_session(db, chat_session.id))
-    unsummarized_messages = all_session_messages[chat_session.summarized_message_count :]
+    unsummarized_messages = all_session_messages[
+        chat_session.summarized_message_count :
+    ]
     recent_messages = unsummarized_messages[-RECENT_RAW_MESSAGE_LIMIT:]
 
     conversation_history = format_conversation_history(recent_messages)
@@ -374,7 +382,6 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
     User question:
     {request.message}
     """.strip()
-
 
     try:
         data = call_ollama(
@@ -425,9 +432,10 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
     try:
         maybe_compact_session_context(db, chat_session)
     except requests.RequestException:
-        logging.exception("Session compaction failed because the summarization call to Ollama failed.")
+        logging.exception(
+            "Session compaction failed because the summarization call to Ollama failed."
+        )
     except Exception:
         logging.exception("Session compaction failed unexpectedly.")
-
 
     return {"session_id": chat_session.id, "answer": answer}
