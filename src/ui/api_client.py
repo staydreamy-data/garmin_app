@@ -15,7 +15,7 @@ def api_post(payload: dict):
     response = requests.post(
         f"{API_URL}/chat",
         json=payload,
-        timeout=60,
+        timeout=180,
     )
     response.raise_for_status()
     return response.json()
