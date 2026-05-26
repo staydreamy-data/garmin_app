@@ -22,7 +22,7 @@ A local-first AI running coach built on top of Garmin training data. Garmin raw 
 Implemented:
 - `Airflow` pipeline for ingesting Garmin data and orchestrating downstream transformations
 - local Airflow development using `Astronomer Astro`
-ata into parquet format, within Pydantic validations
+- transforming data into parquet format, within Pydantic validations
 - medallion architecture in `duckdb-dbt`, where the last layer contains the aggregated context for AI
 - `Streamlit` chat UI for interacting with the trainer
 - `FastAPI` backend that orchestrates prompt construction and local LLM calls
@@ -38,7 +38,7 @@ ata into parquet format, within Pydantic validations
 Current limitations:
 - data layer is not yet completed. While the trainings text summary is ready, it requires to add more technical models for storing weekly and monthly volume.
 - saved AI sessions cannot yet be browsed and resumed from the UI
-- memory is based on recent message history, without summarization yet
+- memory is based on recent message history, with compacting the session data
 - RAG over training articles/books is not implemented yet
 - MCP server is not implemented yet
 

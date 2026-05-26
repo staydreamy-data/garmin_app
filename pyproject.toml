@@ -1,7 +1,7 @@
 [project]
 name = "garmin-app"
 version = "0.1.0"
-description = "Add your description here"
+description = "The libs for garmin-app"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

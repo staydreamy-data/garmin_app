@@ -224,3 +224,28 @@ def update_llm_run_failure(
     db.commit()
     db.refresh(llm_run)
     return llm_run
+
+
+def update_chat_session_summary(
+    db: Session,
+    session: ChatSession,
+    summary: str | None,
+    summarized_message_count: int,
+) -> ChatSession:
+    """Persist the compacted memory summary for a chat session.
+
+    Args:
+        db: Active SQLAlchemy session for the current request.
+        session: Existing chat session row to update.
+        summary: New compacted summary text.
+        summarized_message_count: Number of oldest messages already represented in the summary.
+
+    Returns:
+        The refreshed chat session after the summary update.
+    """
+    session.summary = summary
+    session.summarized_message_count = summarized_message_count
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    return session

@@ -20,6 +20,15 @@ class FakeOllamaResponse:
         }
 
 
+def fake_chat_session(session_id, title=None, summary=None, summarized_message_count=0):
+    return SimpleNamespace(
+        id=session_id,
+        title=title,
+        summary=summary,
+        summarized_message_count=summarized_message_count,
+    )
+
+
 @pytest.fixture
 def client():
     dummy_db = object()
@@ -31,14 +40,16 @@ def client():
     main.app.dependency_overrides.clear()
 
 
-def test_chat_creates_new_session_when_session_id_is_missing(monkeypatch, client) -> None:
+def test_chat_creates_new_session_when_session_id_is_missing(
+    monkeypatch, client
+) -> None:
     test_client, dummy_db = client
     session_id = uuid4()
     user_message_id = uuid4()
     assistant_message_id = uuid4()
     run_id = uuid4()
 
-    created_session = SimpleNamespace(id=session_id, title=None)
+    created_session = fake_chat_session(session_id)
     llm_run = SimpleNamespace(id=run_id, status="started")
     created_messages: list[tuple[str, str]] = []
     success_updates: list[dict] = []
@@ -68,7 +79,12 @@ def test_chat_creates_new_session_when_session_id_is_missing(monkeypatch, client
     monkeypatch.setattr(
         main,
         "update_chat_session_title",
-        lambda db, session, title: SimpleNamespace(id=session.id, title=title),
+        lambda db, session, title: fake_chat_session(
+            session.id,
+            title=title,
+            summary=session.summary,
+            summarized_message_count=session.summarized_message_count,
+        ),
     )
     monkeypatch.setattr(
         main,
@@ -96,7 +112,9 @@ def test_chat_creates_new_session_when_session_id_is_missing(monkeypatch, client
         return llm_run
 
     monkeypatch.setattr(main, "update_llm_run_success", fake_update_llm_run_success)
-    monkeypatch.setattr(main.requests, "post", lambda *args, **kwargs: FakeOllamaResponse())
+    monkeypatch.setattr(
+        main.requests, "post", lambda *args, **kwargs: FakeOllamaResponse()
+    )
 
     response = test_client.post("/chat", json={"message": "Help me improve my 10K"})
 
@@ -114,12 +132,14 @@ def test_chat_creates_new_session_when_session_id_is_missing(monkeypatch, client
     assert success_updates[0]["total_tokens"] == 20
 
 
-def test_chat_reuses_existing_session_when_session_id_is_provided(monkeypatch, client) -> None:
+def test_chat_reuses_existing_session_when_session_id_is_provided(
+    monkeypatch, client
+) -> None:
     test_client, dummy_db = client
     session_id = uuid4()
     user_message_id = uuid4()
     assistant_message_id = uuid4()
-    existing_session = SimpleNamespace(id=session_id, title="Existing chat")
+    existing_session = fake_chat_session(session_id, title="Existing chat")
     llm_run = SimpleNamespace(id=uuid4(), status="started")
     session_lookup_calls: list[UUID] = []
 
@@ -153,7 +173,9 @@ def test_chat_reuses_existing_session_when_session_id_is_provided(monkeypatch, c
         lambda db, session_id, user_message_id, model_name: llm_run,
     )
     monkeypatch.setattr(main, "update_llm_run_success", lambda *args, **kwargs: llm_run)
-    monkeypatch.setattr(main.requests, "post", lambda *args, **kwargs: FakeOllamaResponse())
+    monkeypatch.setattr(
+        main.requests, "post", lambda *args, **kwargs: FakeOllamaResponse()
+    )
 
     response = test_client.post(
         "/chat",
@@ -186,7 +208,9 @@ def test_chat_returns_404_for_unknown_session(monkeypatch, client) -> None:
     assert response.json()["detail"] == "Session not found"
 
 
-def test_chat_marks_llm_run_failed_when_ollama_request_fails(monkeypatch, client) -> None:
+def test_chat_marks_llm_run_failed_when_ollama_request_fails(
+    monkeypatch, client
+) -> None:
     test_client, dummy_db = client
     session_id = uuid4()
     user_message_id = uuid4()
@@ -196,7 +220,7 @@ def test_chat_marks_llm_run_failed_when_ollama_request_fails(monkeypatch, client
     monkeypatch.setattr(
         main,
         "create_chat_session",
-        lambda db: SimpleNamespace(id=session_id, title=None),
+        lambda db: fake_chat_session(session_id),
     )
     monkeypatch.setattr(
         main,
@@ -220,7 +244,12 @@ def test_chat_marks_llm_run_failed_when_ollama_request_fails(monkeypatch, client
     monkeypatch.setattr(
         main,
         "update_chat_session_title",
-        lambda db, session, title: SimpleNamespace(id=session.id, title=title),
+        lambda db, session, title: fake_chat_session(
+            session.id,
+            title=title,
+            summary=session.summary,
+            summarized_message_count=session.summarized_message_count,
+        ),
     )
     monkeypatch.setattr(
         main,

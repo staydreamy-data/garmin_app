@@ -1,5 +1,5 @@
 {
-  "name": "dehetapp",
+  "name": "garmin-app",
   "build": {
     "dockerfile": "Dockerfile"
   },
