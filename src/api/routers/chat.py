@@ -2,18 +2,12 @@ import requests
 import logging
 from sqlalchemy.orm import Session
 from src.api.schemas.chat import ChatResponse, ChatRequest
-import duckdb
 from fastapi import APIRouter, HTTPException, Depends
 from src.api.db.session import get_db
 from src.api.db.crud import get_messages_by_session, create_chat_message, create_chat_session, get_chat_session, update_chat_session_title, create_llm_run, update_llm_run_success, update_llm_run_failure, update_chat_session_summary
-from pathlib import Path
-import time
+from src.api.services.training_context import training_context_service
 
-# very custom path, needs to be fixed later
-DUCKDB_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "astro/include/data/duckdb/garmin_db.duckdb"
-)
+import time
 
 
 RECENT_RAW_MESSAGE_LIMIT = 6
@@ -118,32 +112,6 @@ def format_conversation_history(messages) -> str:
 
     return "\n".join(lines)
 
-def get_latest_training_context() -> str:
-    """Load the newest dbt-generated training summary from DuckDB.
-
-    Returns:
-        A short summary of the latest training context for prompt injection.
-    """
-    con = duckdb.connect(str(DUCKDB_PATH), read_only=True)
-    try:
-        row = con.execute(
-            """
-            SELECT run_date, training_summary
-            FROM dev_gold.running_trainings_summary
-            ORDER BY run_date DESC, activity_id DESC
-            LIMIT 1
-            """
-        ).fetchone()
-    finally:
-        con.close()
-
-    if row is None:
-        return "No training summary available."
-
-    run_date, training_summary = row
-    return f"Latest run on {run_date}: {training_summary}"
-
-
 
 def maybe_compact_session_context(db: Session, chat_session) -> None:
     """Compact older chat turns into a stored session summary.
@@ -228,7 +196,7 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
 
     started_at = time.perf_counter()
 
-    training_context = get_latest_training_context()
+    training_context = training_context_service.get_latest_training_context()
 
     prompt = f"""
     You are a concise running coach.
