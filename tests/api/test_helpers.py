@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from src.api.main import build_session_title, format_conversation_history
+from src.api.routers.chat import build_session_title, format_conversation_history
 
 
 def test_build_session_title_returns_fallback_for_blank_message() -> None:
