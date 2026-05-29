@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from src.api.db.session import get_db
 from src.api.db.crud import get_messages_by_session, create_chat_message, create_chat_session, get_chat_session, update_chat_session_title, create_llm_run, update_llm_run_success, update_llm_run_failure, update_chat_session_summary
 from src.api.services.training_context import training_context_service
-
+from src.api.clients.ollama import OllamaClient
 import time
 
 
@@ -18,7 +18,6 @@ LLM_TEMPERATURE = 0.1
 router = APIRouter()
 
 
-from src.api.clients.ollama import OllamaClient
 
 
 ollama_client = OllamaClient()
