@@ -5,6 +5,7 @@ router = APIRouter()
 
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:4b")
 
+
 @router.get("/health")
 def health():
     """Return a lightweight health response for the API and selected model.

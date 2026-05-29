@@ -1,6 +1,6 @@
-
 from pydantic import BaseModel
 from uuid import UUID
+
 
 class ChatRequest(BaseModel):
     """Incoming chat payload with optional persisted session continuity."""

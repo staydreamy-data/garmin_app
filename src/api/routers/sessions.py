@@ -3,9 +3,14 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from src.api.schemas.chat import SessionSummaryResponse, ChatMessageResponse
 from src.api.db.session import get_db
-from src.api.db.crud import list_chat_sessions, get_chat_session, get_messages_by_session
+from src.api.db.crud import (
+    list_chat_sessions,
+    get_chat_session,
+    get_messages_by_session,
+)
 
 router = APIRouter()
+
 
 @router.get("/sessions", response_model=list[SessionSummaryResponse])
 def get_sessions(db: Session = Depends(get_db)):

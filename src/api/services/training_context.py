@@ -1,16 +1,16 @@
-
 import duckdb
 import os
 from pathlib import Path
 
 # very custom path, needs to be fixed later
 DEFAULT_DUCKDB_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "astro/include/data/duckdb/garmin_db.duckdb"
+    Path(__file__).resolve().parents[3] / "astro/include/data/duckdb/garmin_db.duckdb"
 )
+
 
 def get_duckdb_path() -> Path:
     return Path(os.getenv("DUCKDB_PATH", DEFAULT_DUCKDB_PATH))
+
 
 class TrainingContextService:
     def __init__(self, duckdb_path: Path) -> None:
@@ -35,5 +35,6 @@ class TrainingContextService:
 
         run_date, training_summary = row
         return f"Latest run on {run_date}: {training_summary}"
-    
+
+
 training_context_service = TrainingContextService(get_duckdb_path())
