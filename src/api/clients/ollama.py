@@ -1,6 +1,6 @@
-import os
-import requests
 
+import requests
+from src.api.core.settings import get_settings
 
 class OllamaClient:
     def __init__(
@@ -9,8 +9,9 @@ class OllamaClient:
         model: str | None = None,
         timeout: int = 60,
     ) -> None:
-        self.base_url = base_url or os.getenv("OLLAMA_URL", "http://localhost:11434")
-        self.model = model or os.getenv("OLLAMA_MODEL", "gemma3:4b")
+        settings = get_settings()
+        self.base_url = base_url or settings.ollama_url
+        self.model = model or settings.ollama_model
         self.timeout = timeout
 
     def generate(

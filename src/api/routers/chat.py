@@ -1,5 +1,6 @@
 import requests
 import logging
+from src.api.core.settings import get_settings
 from sqlalchemy.orm import Session
 from src.api.schemas.chat import ChatResponse, ChatRequest
 from fastapi import APIRouter, HTTPException, Depends
@@ -20,16 +21,11 @@ from src.api.clients.ollama import OllamaClient
 import time
 
 
-RECENT_RAW_MESSAGE_LIMIT = 6
-COMPACTION_TRIGGER_MESSAGE_COUNT = 12
-SUMMARY_NUM_PREDICT = 350
-LLM_TEMPERATURE = 0.1
-
 router = APIRouter()
 
 
 ollama_client = OllamaClient()
-
+settings = get_settings()
 
 def build_session_title(message: str, max_length: int = 60) -> str:
     """Derive a short session label from the first user prompt.
@@ -95,8 +91,8 @@ def generate_session_summary(existing_summary: str | None, messages_to_compact) 
     prompt = build_summary_prompt(existing_summary, messages_to_compact)
     data = ollama_client.generate(
         prompt=prompt,
-        num_predict=SUMMARY_NUM_PREDICT,
-        temperature=LLM_TEMPERATURE,
+        num_predict=settings.summary_num_predict,
+        temperature=settings.summary_temperature,
     )
     return data["response"].strip()
 
@@ -129,15 +125,15 @@ def maybe_compact_session_context(db: Session, chat_session) -> None:
     all_messages = list(get_messages_by_session(db, chat_session.id))
     total_messages = len(all_messages)
 
-    if total_messages <= COMPACTION_TRIGGER_MESSAGE_COUNT:
+    if total_messages <= settings.compaction_trigger_message_count:
         return
 
     unsummarized_messages = all_messages[chat_session.summarized_message_count :]
 
-    if len(unsummarized_messages) <= RECENT_RAW_MESSAGE_LIMIT:
+    if len(unsummarized_messages) <= settings.recent_raw_message_limit:
         return
 
-    messages_to_compact = unsummarized_messages[:-RECENT_RAW_MESSAGE_LIMIT]
+    messages_to_compact = unsummarized_messages[:-settings.recent_raw_message_limit]
     if not messages_to_compact:
         return
 
@@ -179,7 +175,7 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
     unsummarized_messages = all_session_messages[
         chat_session.summarized_message_count :
     ]
-    recent_messages = unsummarized_messages[-RECENT_RAW_MESSAGE_LIMIT:]
+    recent_messages = unsummarized_messages[-settings.recent_raw_message_limit :]
 
     conversation_history = format_conversation_history(recent_messages)
     session_summary = chat_session.summary or "No previous summary."

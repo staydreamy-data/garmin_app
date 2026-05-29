@@ -1,6 +1,7 @@
 import duckdb
 import os
 from pathlib import Path
+from src.api.core.settings import get_settings
 
 # very custom path, needs to be fixed later
 DEFAULT_DUCKDB_PATH = (
@@ -9,7 +10,8 @@ DEFAULT_DUCKDB_PATH = (
 
 
 def get_duckdb_path() -> Path:
-    return Path(os.getenv("DUCKDB_PATH", DEFAULT_DUCKDB_PATH))
+    settings = get_settings()
+    return Path(os.getenv("DUCKDB_PATH", settings.duckdb_path))
 
 
 class TrainingContextService:
