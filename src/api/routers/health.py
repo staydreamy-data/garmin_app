@@ -1,9 +1,9 @@
 from fastapi import APIRouter
-import os
+from src.api.core.settings import get_settings
+
+settings = get_settings()
 
 router = APIRouter()
-
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:4b")
 
 
 @router.get("/health")
@@ -13,4 +13,4 @@ def health():
     Returns:
         A status payload with the configured Ollama model name.
     """
-    return {"status": "ok", "model": OLLAMA_MODEL}
+    return {"status": "ok", "model": settings.ollama_model}

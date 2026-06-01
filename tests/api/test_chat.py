@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from src.api import main
 from src.api.db.session import get_db
-from src.api.routers import chat as chat_router
+from src.api.services import chat_service
 
 
 class FakeOllamaResponse:
@@ -57,17 +57,17 @@ def test_chat_creates_new_session_when_session_id_is_missing(
     success_updates: list[dict] = []
 
     monkeypatch.setattr(
-        chat_router,
+        chat_service,
         "create_chat_session",
         lambda db: created_session,
     )
     monkeypatch.setattr(
-        chat_router,
+        chat_service,
         "get_messages_by_session",
         lambda db, current_session_id, limit=20: [],
     )
     monkeypatch.setattr(
-        chat_router.training_context_service,
+        chat_service.training_context_service,
         "get_latest_training_context",
         lambda: "Latest run on 2026-05-01: steady aerobic run.",
     )
@@ -77,9 +77,9 @@ def test_chat_creates_new_session_when_session_id_is_missing(
         message_id = user_message_id if role == "user" else assistant_message_id
         return SimpleNamespace(id=message_id, role=role, content=content)
 
-    monkeypatch.setattr(chat_router, "create_chat_message", fake_create_chat_message)
+    monkeypatch.setattr(chat_service, "create_chat_message", fake_create_chat_message)
     monkeypatch.setattr(
-        chat_router,
+        chat_service,
         "update_chat_session_title",
         lambda db, session, title: fake_chat_session(
             session.id,
@@ -89,7 +89,7 @@ def test_chat_creates_new_session_when_session_id_is_missing(
         ),
     )
     monkeypatch.setattr(
-        chat_router,
+        chat_service,
         "create_llm_run",
         lambda db, session_id, user_message_id, model_name: llm_run,
     )
@@ -114,10 +114,10 @@ def test_chat_creates_new_session_when_session_id_is_missing(
         return llm_run
 
     monkeypatch.setattr(
-        chat_router, "update_llm_run_success", fake_update_llm_run_success
+        chat_service, "update_llm_run_success", fake_update_llm_run_success
     )
     monkeypatch.setattr(
-        chat_router.ollama_client,
+        chat_service.ollama_client,
         "generate",
         lambda *args, **kwargs: FakeOllamaResponse().json(),
     )
@@ -153,9 +153,9 @@ def test_chat_reuses_existing_session_when_session_id_is_provided(
         session_lookup_calls.append(requested_session_id)
         return existing_session
 
-    monkeypatch.setattr(chat_router, "get_chat_session", fake_get_chat_session)
+    monkeypatch.setattr(chat_service, "get_chat_session", fake_get_chat_session)
     monkeypatch.setattr(
-        chat_router,
+        chat_service,
         "get_messages_by_session",
         lambda db, current_session_id, limit=20: [
             SimpleNamespace(role="user", content="How was my last interval session?"),
@@ -163,7 +163,7 @@ def test_chat_reuses_existing_session_when_session_id_is_provided(
         ],
     )
     monkeypatch.setattr(
-        chat_router.training_context_service,
+        chat_service.training_context_service,
         "get_latest_training_context",
         lambda: "Latest run on 2026-05-01: interval session with good pacing.",
     )
@@ -172,17 +172,17 @@ def test_chat_reuses_existing_session_when_session_id_is_provided(
         message_id = user_message_id if role == "user" else assistant_message_id
         return SimpleNamespace(id=message_id, role=role, content=content)
 
-    monkeypatch.setattr(chat_router, "create_chat_message", fake_create_chat_message)
+    monkeypatch.setattr(chat_service, "create_chat_message", fake_create_chat_message)
     monkeypatch.setattr(
-        chat_router,
+        chat_service,
         "create_llm_run",
         lambda db, session_id, user_message_id, model_name: llm_run,
     )
     monkeypatch.setattr(
-        chat_router, "update_llm_run_success", lambda *args, **kwargs: llm_run
+        chat_service, "update_llm_run_success", lambda *args, **kwargs: llm_run
     )
     monkeypatch.setattr(
-        chat_router.ollama_client,
+        chat_service.ollama_client,
         "generate",
         lambda *args, **kwargs: FakeOllamaResponse().json(),
     )
@@ -205,7 +205,7 @@ def test_chat_returns_404_for_unknown_session(monkeypatch, client) -> None:
     session_id = uuid4()
 
     monkeypatch.setattr(
-        chat_router, "get_chat_session", lambda db, requested_session_id: None
+        chat_service, "get_chat_session", lambda db, requested_session_id: None
     )
 
     response = test_client.post(
@@ -230,22 +230,22 @@ def test_chat_marks_llm_run_failed_when_ollama_request_fails(
     failure_updates: list[dict] = []
 
     monkeypatch.setattr(
-        chat_router,
+        chat_service,
         "create_chat_session",
         lambda db: fake_chat_session(session_id),
     )
     monkeypatch.setattr(
-        chat_router,
+        chat_service,
         "get_messages_by_session",
         lambda db, current_session_id, limit=20: [],
     )
     monkeypatch.setattr(
-        chat_router.training_context_service,
+        chat_service.training_context_service,
         "get_latest_training_context",
         lambda: "Latest run on 2026-05-01: easy recovery run.",
     )
     monkeypatch.setattr(
-        chat_router,
+        chat_service,
         "create_chat_message",
         lambda db, session_id, role, content: SimpleNamespace(
             id=user_message_id if role == "user" else uuid4(),
@@ -254,7 +254,7 @@ def test_chat_marks_llm_run_failed_when_ollama_request_fails(
         ),
     )
     monkeypatch.setattr(
-        chat_router,
+        chat_service,
         "update_chat_session_title",
         lambda db, session, title: fake_chat_session(
             session.id,
@@ -264,7 +264,7 @@ def test_chat_marks_llm_run_failed_when_ollama_request_fails(
         ),
     )
     monkeypatch.setattr(
-        chat_router,
+        chat_service,
         "create_llm_run",
         lambda db, session_id, user_message_id, model_name: llm_run,
     )
@@ -280,13 +280,13 @@ def test_chat_marks_llm_run_failed_when_ollama_request_fails(
         return llm_run
 
     monkeypatch.setattr(
-        chat_router, "update_llm_run_failure", fake_update_llm_run_failure
+        chat_service, "update_llm_run_failure", fake_update_llm_run_failure
     )
 
     def raise_request_exception(*args, **kwargs):
         raise requests.RequestException("Ollama is unavailable")
 
-    monkeypatch.setattr(chat_router.ollama_client, "generate", raise_request_exception)
+    monkeypatch.setattr(chat_service.ollama_client, "generate", raise_request_exception)
 
     response = test_client.post("/chat", json={"message": "What should I do tomorrow?"})
 
