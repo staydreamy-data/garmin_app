@@ -3,9 +3,9 @@ from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_DUCKDB_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "astro/include/data/duckdb/garmin_db.duckdb"
+    Path(__file__).resolve().parents[3] / "astro/include/data/duckdb/garmin_db.duckdb"
 )
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     summary_temperature: float = 0.1
     chat_num_predict: int = 1000
     chat_temperature: float = 0.3
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

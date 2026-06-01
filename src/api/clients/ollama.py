@@ -1,6 +1,6 @@
-
 import requests
 from src.api.core.settings import get_settings
+
 
 class OllamaClient:
     def __init__(
