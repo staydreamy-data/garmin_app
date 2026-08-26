@@ -27,14 +27,17 @@ def get_garmin_client(conn_id):
         RuntimeError: If the Airflow connection is missing/invalid or login fails.
     """
     try:
+        logging.info(f"Attempting to login to Garmin Connect using connection id: {conn_id}")
         conn = BaseHook.get_connection(conn_id)
         username = conn.login
         password = conn.password
 
         client = Garmin(username, password)
         client.login()
+        logging.info("Successfully logged in to Garmin Connect.")
         return client
     except Exception as e:
+        logging.error("Failed to login to Garmin Connect")
         raise RuntimeError("Failed to login to Garmin Connect") from e
 
 
