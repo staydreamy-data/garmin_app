@@ -43,7 +43,6 @@ class LLMProviderError(Exception):
 class ChatService:
     def __init__(self, db: Session) -> None:
         self._db_session = db
-        self._chat_session = None
 
     def generate_session_summary(self, existing_summary: str | None, messages_to_compact) -> str:
         """Generate an updated compacted summary for older session history."""
@@ -55,18 +54,18 @@ class ChatService:
         )
         return data["response"].strip()
 
-    def maybe_compact_session_context(self) -> None:
+    def maybe_compact_session_context(self, chat_session) -> None:
         """Compact older chat turns into a stored session summary.
 
         This runs after a successful assistant response. It never deletes raw messages.
         """
-        all_messages = list(get_messages_by_session(self._db_session, self._chat_session.id))
+        all_messages = list(get_messages_by_session(self._db_session, chat_session.id))
         total_messages = len(all_messages)
 
         if total_messages <= settings.compaction_trigger_message_count:
             return
 
-        unsummarized_messages = all_messages[self._chat_session.summarized_message_count :]
+        unsummarized_messages = all_messages[chat_session.summarized_message_count :]
 
         if len(unsummarized_messages) <= settings.recent_raw_message_limit:
             return
@@ -76,49 +75,49 @@ class ChatService:
             return
 
         updated_summary = self.generate_session_summary(
-            self._chat_session.summary, messages_to_compact
+            chat_session.summary, messages_to_compact
         )
 
         update_chat_session_summary(
             db=self._db_session,
-            session=self._chat_session,
+            session=chat_session,
             summary=updated_summary,
-            summarized_message_count=self._chat_session.summarized_message_count
+            summarized_message_count=chat_session.summarized_message_count
             + len(messages_to_compact),
         )
 
     def handle_chat_turn(self, request: ChatRequest) -> ChatResponse:
 
         if request.session_id is None:
-            self._chat_session = create_chat_session(self._db_session)
+            chat_session = create_chat_session(self._db_session)
         else:
-            self._chat_session = get_chat_session(self._db_session, request.session_id)
-            if self._chat_session is None:
+            chat_session = get_chat_session(self._db_session, request.session_id)
+            if chat_session is None:
                 raise SessionNotFoundError
 
-        all_session_messages = list(get_messages_by_session(self._db_session, self._chat_session.id))
+        all_session_messages = list(get_messages_by_session(self._db_session, chat_session.id))
         unsummarized_messages = all_session_messages[
-            self._chat_session.summarized_message_count :
+            chat_session.summarized_message_count :
         ]
         recent_messages = unsummarized_messages[-settings.recent_raw_message_limit :]
 
         conversation_history = format_conversation_history(recent_messages)
-        session_summary = self._chat_session.summary or "No previous summary."
+        session_summary = chat_session.summary or "No previous summary."
 
         user_message = create_chat_message(
             db=self._db_session,
-            session_id=self._chat_session.id,
+            session_id=chat_session.id,
             role="user",
             content=request.message,
         )
 
-        if not self._chat_session.title:
+        if not chat_session.title:
             title = build_session_title(request.message)
-            self._chat_session = update_chat_session_title(self._db_session, self._chat_session, title)
+            chat_session = update_chat_session_title(self._db_session, chat_session, title)
 
         llm_run = create_llm_run(
             db=self._db_session,
-            session_id=self._chat_session.id,
+            session_id=chat_session.id,
             user_message_id=user_message.id,
             model_name=ollama_client.model,
         )
@@ -156,7 +155,7 @@ class ChatService:
 
         assistant_message = create_chat_message(
             db=self._db_session,
-            session_id=self._chat_session.id,
+            session_id=chat_session.id,
             role="assistant",
             content=answer,
         )
@@ -179,7 +178,7 @@ class ChatService:
         )
 
         try:
-            self.maybe_compact_session_context()
+            self.maybe_compact_session_context(chat_session)
         except requests.RequestException:
             logging.exception(
                 "Session compaction failed because the summarization call to Ollama failed."
@@ -187,4 +186,4 @@ class ChatService:
         except Exception:
             logging.exception("Session compaction failed unexpectedly.")
 
-        return ChatResponse(session_id=self._chat_session.id, answer=answer)
+        return ChatResponse(session_id=chat_session.id, answer=answer)
